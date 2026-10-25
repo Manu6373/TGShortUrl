@@ -1,1 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TeleShort - Mini App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src='//libtl.com/sdk.js' data-zone='12122788' data-sdk='show_12122788'></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Poppins', sans-serif; background: #0f172a; color: #f8fafc; padding-bottom: 80px; min-height: 100vh; overflow-x: hidden; -webkit-tap-highlight-color: transparent;}
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 1.25rem; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); }
+        .primary-gradient { background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%); }
+        .success-gradient { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .nav-item { color: #64748b; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .nav-item.active { color: #60a5fa; transform: translateY(-4px); }
+        .nav-item.active .nav-icon { background: rgba(96, 165, 250, 0.15); color: #60a5fa; box-shadow: 0 0 15px rgba(96, 165, 250, 0.2); }
+        .ad-timer-circle { border-top-color: #3b82f6; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Custom Select Styling */
+        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="%2394a3b8" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>') no-repeat right 10px center; background-size: 20px; }
+    </style>
+</head>
+<body>
 
+    <!-- LOADING SCREEN -->
+    <div id="ui-loading" class="fixed inset-0 flex flex-col items-center justify-center bg-[#0f172a] z-50">
+        <i class="fa-solid fa-bolt text-5xl text-indigo-500 mb-4 animate-pulse"></i>
+        <h2 class="text-2xl font-bold text-white mb-2" id="loading-title">TeleShort</h2>
+        <p class="text-slate-400 text-sm" id="loading-text">Connecting to servers...</p>
+    </div>
+
+    <!-- MAINTENANCE SCREEN -->
+    <div id="ui-maintenance" class="fixed inset-0 flex flex-col items-center justify-center bg-[#0f172a] z-50 hidden fade-in">
+        <div class="glass-panel p-8 max-w-sm text-center border border-amber-500/30">
+            <div class="w-20 h-20 bg-amber-500/20 rounded-full mx-auto flex items-center justify-center mb-6"><i class="fa-solid fa-person-digging text-4xl text-amber-500"></i></div>
+            <h2 class="text-2xl font-bold text-white mb-2">Under Maintenance</h2>
+            <p class="text-sm text-slate-300 mb-6">We are currently upgrading our servers to serve you better. Please check back later!</p>
+            <button onclick="tg.close()" class="w-full bg-slate-800 text-white font-bold py-3 rounded-xl transition-all hover:bg-slate-700">Close App</button>
+        </div>
+    </div>
+
+    <!-- WARNING POPUP -->
+    <div id="warning-popup" class="fixed inset-0 z-[60] bg-[#0f172a]/90 backdrop-blur-sm flex items-center justify-center hidden fade-in">
+        <div class="glass-panel p-6 m-4 max-w-sm text-center border border-red-500/50 shadow-2xl shadow-red-500/20">
+            <div class="w-16 h-16 bg-red-500/20 rounded-full mx-auto flex items-center justify-center mb-4"><i class="fa-solid fa-triangle-exclamation text-3xl text-red-500"></i></div>
+            <h2 class="text-xl font-bold text-white mb-2">Important Rules!</h2>
+            <p class="text-sm text-slate-300 mb-6"><span class="text-red-400 font-bold">1.</span> NO VPN Allowed.<br><span class="text-red-400 font-bold">2.</span> NO Self-Clicking.<br><br>Violations will result in an instant <span class="font-bold text-red-400">Account BAN</span> without payout.</p>
+            <button onclick="document.getElementById('warning-popup').classList.add('hidden')" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl transition-all">I Agree</button>
+        </div>
+    </div>
+
+    <!-- MAIN APP UI -->
+    <div id="ui-main-app" class="hidden">
+        <!-- HEADER -->
+        <header class="flex items-center justify-between p-4 glass-panel m-4 sticky top-4 z-30">
+            <div class="flex items-center space-x-3">
+                <div class="w-11 h-11 rounded-full primary-gradient flex items-center justify-center shadow-lg"><i class="fa-solid fa-bolt text-white text-lg"></i></div>
+                <div><h1 class="font-bold text-lg text-white leading-tight">TeleShort</h1><p class="text-[11px] text-indigo-300" id="user-greeting">Loading...</p></div>
+            </div>
+            <div class="flex items-center space-x-2 bg-slate-800/80 py-2 px-4 rounded-full border border-slate-700 shadow-inner">
+                <i class="fa-solid fa-wallet text-emerald-400"></i><span class="font-bold text-sm text-emerald-400" id="header-balance">$0.00</span>
+            </div>
+        </header>
+
+        <div id="pages-container">
+            <!-- PAGE: HOME -->
+            <div id="page-home" class="page-content fade-in">
+                <div class="mx-4 mb-6 p-6 glass-panel relative overflow-hidden">
+                    <h2 class="text-xs font-bold text-indigo-400 mb-3 uppercase tracking-wider"><i class="fa-solid fa-link mr-2"></i> Create Short Link</h2>
+                    <input type="url" id="long-url-input" placeholder="Paste your long URL here..." class="w-full bg-slate-900/80 border border-slate-700 text-white rounded-xl p-4 mb-4 focus:outline-none focus:border-indigo-500 transition-colors text-sm shadow-inner">
+                    <button id="btn-shorten" class="w-full primary-gradient hover:opacity-90 text-white font-bold py-4 rounded-xl flex items-center justify-center space-x-2 shadow-lg shadow-indigo-500/25 transition-transform active:scale-95">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i><span>Shorten & Earn</span>
+                    </button>
+                    <div id="shorten-result" class="hidden mt-5 p-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 rounded-xl">
+                        <div class="flex justify-between items-center bg-slate-900 rounded-lg p-3">
+                            <span id="short-link-display" class="text-sm font-mono text-emerald-400 truncate w-[80%]"></span>
+                            <button id="btn-copy-link" class="bg-slate-800 w-10 h-10 rounded-lg text-emerald-400 flex items-center justify-center hover:bg-slate-700 transition-colors"><i class="fa-solid fa-copy"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mx-4 mb-6">
+                    <div class="glass-panel p-5 text-center relative overflow-hidden">
+                        <div class="absolute -right-3 -bottom-3 opacity-5"><i class="fa-solid fa-chart-line text-6xl"></i></div>
+                        <div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Today's Earn</div><div class="text-2xl font-bold text-emerald-400" id="stat-today-earn">$0.00</div>
+                    </div>
+                    <div class="glass-panel p-5 text-center relative overflow-hidden">
+                        <div class="absolute -right-3 -bottom-3 opacity-5"><i class="fa-solid fa-eye text-6xl"></i></div>
+                        <div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Total Views</div><div class="text-2xl font-bold text-white" id="stat-views">0</div>
+                    </div>
+                    <div class="glass-panel p-5 col-span-2 flex justify-between items-center bg-gradient-to-r from-slate-800 to-indigo-900/30">
+                        <div><div class="text-indigo-300 text-xs font-bold uppercase mb-1">Global CPM Rate</div><div class="text-[10px] text-slate-400">Valid for all countries</div></div>
+                        <div class="text-3xl font-bold text-indigo-400" id="stat-cpm">$0.00</div>
+                    </div>
+                </div>
+
+                <div class="mx-4 mb-6 p-5 glass-panel">
+                    <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
+                        <h3 class="font-bold text-sm text-white"><i class="fa-solid fa-calendar-days mr-2 text-indigo-400"></i> Daily Report</h3>
+                        <input type="month" id="report-month" class="bg-slate-900 border border-slate-700 text-xs text-white rounded p-1.5 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div id="earnings-list" class="space-y-2 max-h-60 overflow-y-auto pr-2">
+                        <div class="text-center text-slate-500 py-6 text-xs">Loading data...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: LINKS -->
+            <div id="page-links" class="page-content hidden mx-4 mb-6 fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-white"><i class="fa-solid fa-link text-indigo-400 mr-2"></i> My Links</h2>
+                </div>
+                <div id="links-list" class="space-y-4">
+                    <div class="text-center text-slate-500 py-10"><i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2 block"></i> Loading...</div>
+                </div>
+            </div>
+
+            <!-- PAGE: REFER -->
+            <div id="page-refer" class="page-content hidden mx-4 mb-6 fade-in">
+                <div class="glass-panel p-6 text-center mb-6 relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-b from-indigo-500/10 to-transparent pointer-events-none"></div>
+                    <div class="w-20 h-20 rounded-full bg-slate-800 border border-indigo-500/30 mx-auto flex items-center justify-center mb-4 text-3xl text-indigo-400 relative z-10 shadow-lg shadow-indigo-500/20"><i class="fa-solid fa-users"></i></div>
+                    <h2 class="text-2xl font-bold text-white mb-2">Invite Friends</h2>
+                    <p class="text-sm text-slate-300 mb-6">Earn a lifetime <span class="text-emerald-400 font-bold bg-emerald-500/10 px-2 rounded" id="refer-commission">10%</span> commission from your friends' earnings!</p>
+                    <div class="bg-slate-900 rounded-xl p-2 flex items-center justify-between border border-slate-700">
+                        <span id="referral-link-display" class="text-xs font-mono text-slate-300 truncate px-3 w-[75%]">Generating...</span>
+                        <button id="btn-copy-referral" class="primary-gradient text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-lg active:scale-95 transition-transform">Copy</button>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="glass-panel p-5 text-center">
+                        <div class="text-slate-400 text-xs mb-2 uppercase font-semibold">Total Referrals</div>
+                        <div class="text-3xl font-bold text-white" id="stat-referrals">0</div>
+                    </div>
+                    <div class="glass-panel p-5 text-center border border-emerald-500/30 bg-emerald-900/10">
+                        <div class="text-emerald-400 text-xs mb-2 uppercase font-semibold">Total Earned</div>
+                        <div class="text-3xl font-bold text-emerald-400" id="ref-earnings">$0.00</div>
+                    </div>
+                </div>
+
+                <h3 class="text-sm font-bold text-white mb-3 px-2 flex items-center"><i class="fa-solid fa-list-check mr-2 text-indigo-400"></i> Referrals List</h3>
+                <div id="referrals-list" class="space-y-3">
+                    <div class="text-center text-slate-500 py-6 text-sm glass-panel">Loading details...</div>
+                </div>
+            </div>
+
+            <!-- PAGE: WALLET & WITHDRAWALS -->
+            <div id="page-wallet" class="page-content hidden mx-4 mb-6 fade-in">
+                <h2 class="text-xl font-bold mb-4 text-white"><i class="fa-solid fa-wallet text-emerald-400 mr-2"></i> My Wallet</h2>
+                
+                <!-- Balance Box -->
+                <div class="glass-panel p-8 mb-6 text-center border border-emerald-500/30 bg-gradient-to-br from-emerald-900/20 to-transparent relative overflow-hidden">
+                    <i class="fa-solid fa-coins absolute -right-6 -bottom-6 text-8xl text-emerald-500/10"></i>
+                    <div class="text-sm text-emerald-200 mb-2 font-medium">Available Balance</div>
+                    <div class="text-5xl font-bold text-white mb-2" id="wallet-balance-page">$0.00</div>
+                    <div class="text-xs text-slate-400 mb-6">Minimum Withdrawal: <span id="min-withdraw-display" class="font-bold text-white">$5.00</span></div>
+                </div>
+
+                <!-- Withdrawal Form -->
+                <div class="glass-panel p-6 mb-6 border border-slate-700">
+                    <h3 class="font-bold text-sm text-white mb-4 uppercase tracking-wider border-b border-slate-700 pb-2">Request Payout</h3>
+                    
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-400 mb-2">Select Payment Method</label>
+                        <select id="withdraw-method" class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
+                            <!-- Populated dynamically -->
+                            <option value="">Loading methods...</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-400 mb-2">Payment Details (UPI/Address/Number)</label>
+                        <input type="text" id="withdraw-details" placeholder="Enter valid details..." class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-xs font-bold text-slate-400 mb-2">Amount to Withdraw ($)</label>
+                        <input type="number" step="0.01" id="withdraw-amount" placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
+                    </div>
+
+                    <button id="btn-submit-withdraw" onclick="submitWithdrawal()" class="w-full success-gradient hover:opacity-90 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center space-x-2 transition-transform active:scale-95">
+                        <i class="fa-solid fa-money-bill-transfer"></i><span>Submit Request</span>
+                    </button>
+                </div>
+
+                <!-- History -->
+                <h3 class="font-bold text-sm text-slate-300 mb-3 px-2"><i class="fa-solid fa-clock-rotate-left mr-2"></i> Payout History</h3>
+                <div id="withdrawal-history-list" class="space-y-3">
+                    <div class="glass-panel p-6 text-center text-slate-500 text-xs">No transactions yet.</div>
+                </div>
+            </div>
+
+            <!-- PAGE: PROFILE -->
+            <div id="page-profile" class="page-content hidden mx-4 mb-6 fade-in">
+                <div class="glass-panel p-8 mb-6 text-center relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-br from-indigo-600/20 to-transparent"></div>
+                    <div id="profile-avatar" class="w-24 h-24 rounded-full primary-gradient mx-auto mb-4 flex items-center justify-center text-4xl font-bold text-white shadow-xl border-4 border-slate-800 relative z-10">?</div>
+                    <h2 id="profile-name" class="text-2xl font-bold text-white relative z-10">User Name</h2>
+                    <p id="profile-id" class="text-xs text-indigo-300 font-mono mt-2 bg-indigo-500/20 inline-block px-3 py-1 rounded-full border border-indigo-500/30 relative z-10">ID: ...</p>
+                </div>
+
+                <div class="glass-panel p-2 mb-4 shadow-lg">
+                    <h3 class="text-xs font-bold text-slate-400 px-4 pt-4 pb-2 uppercase tracking-wider">Social Links</h3>
+                    
+                    <a id="link-tg" href="#" target="_blank" class="hidden items-center justify-between p-4 hover:bg-slate-800/50 rounded-xl transition">
+                        <div class="flex items-center"><i class="fa-brands fa-telegram w-8 text-blue-400 text-2xl text-center"></i><span class="font-medium text-sm text-slate-200 ml-2">Official Channel</span></div>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+                    </a>
+                    
+                    <div id="div-line-yt" class="hidden h-px bg-slate-700/50 mx-4"></div>
+                    
+                    <a id="link-yt" href="#" target="_blank" class="hidden items-center justify-between p-4 hover:bg-slate-800/50 rounded-xl transition">
+                        <div class="flex items-center"><i class="fa-brands fa-youtube w-8 text-red-500 text-2xl text-center"></i><span class="font-medium text-sm text-slate-200 ml-2">YouTube Channel</span></div>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+                    </a>
+                </div>
+
+                <div class="glass-panel p-2 mb-4 shadow-lg">
+                    <h3 class="text-xs font-bold text-slate-400 px-4 pt-4 pb-2 uppercase tracking-wider">Legal</h3>
+                    <a id="link-privacy" href="#" target="_blank" class="hidden items-center justify-between p-4 hover:bg-slate-800/50 rounded-xl transition">
+                        <div class="flex items-center"><i class="fa-solid fa-shield-halved w-8 text-slate-400 text-lg text-center"></i><span class="text-sm text-slate-300 ml-2">Privacy Policy</span></div>
+                        <i class="fa-solid fa-chevron-right text-xs text-slate-600"></i>
+                    </a>
+                    <a id="link-terms" href="#" target="_blank" class="hidden items-center justify-between p-4 hover:bg-slate-800/50 rounded-xl transition border-t border-slate-700/50">
+                        <div class="flex items-center"><i class="fa-solid fa-file-contract w-8 text-slate-400 text-lg text-center"></i><span class="text-sm text-slate-300 ml-2">Terms of Service</span></div>
+                        <i class="fa-solid fa-chevron-right text-xs text-slate-600"></i>
+                    </a>
+                </div>
+
+                <div class="text-center text-[10px] text-slate-500 mt-8 mb-2">Developed & Maintained by <span class="font-bold text-indigo-400">WebApp Sikho</span></div>
+            </div>
+        </div>
+
+        <!-- BOTTOM NAVIGATION -->
+        <nav class="fixed bottom-0 left-0 w-full bg-[#0f172a]/95 backdrop-blur-xl border-t border-slate-800 z-40 pb-safe">
+            <div class="flex justify-between items-end px-2 pt-2 pb-3">
+                <button class="nav-btn nav-item active flex flex-col items-center w-1/5" data-target="page-home"><div class="nav-icon w-10 h-10 rounded-xl flex items-center justify-center text-lg mb-1"><i class="fa-solid fa-house"></i></div><span class="text-[10px] font-medium tracking-wide">Home</span></button>
+                <button class="nav-btn nav-item flex flex-col items-center w-1/5" data-target="page-links"><div class="nav-icon w-10 h-10 rounded-xl flex items-center justify-center text-lg mb-1"><i class="fa-solid fa-link"></i></div><span class="text-[10px] font-medium tracking-wide">Links</span></button>
+                <button class="nav-btn nav-item flex flex-col items-center w-1/5" data-target="page-refer"><div class="nav-icon w-10 h-10 rounded-xl flex items-center justify-center text-lg mb-1"><i class="fa-solid fa-users"></i></div><span class="text-[10px] font-medium tracking-wide">Refer</span></button>
+                <button class="nav-btn nav-item flex flex-col items-center w-1/5" data-target="page-wallet"><div class="nav-icon w-10 h-10 rounded-xl flex items-center justify-center text-lg mb-1"><i class="fa-solid fa-wallet"></i></div><span class="text-[10px] font-medium tracking-wide">Wallet</span></button>
+                <button class="nav-btn nav-item flex flex-col items-center w-1/5" data-target="page-profile"><div class="nav-icon w-10 h-10 rounded-xl flex items-center justify-center text-lg mb-1"><i class="fa-solid fa-user"></i></div><span class="text-[10px] font-medium tracking-wide">Profile</span></button>
+            </div>
+        </nav>
+    </div>
+
+    <!-- ADVANCED AD VIEWING UI -->
+    <div id="ui-ad-viewer" class="hidden min-h-screen flex flex-col items-center justify-center p-6 z-50">
+        <div class="glass-panel w-full max-w-sm p-8 text-center shadow-2xl relative overflow-hidden">
+            <div id="ad-blocker-warning" class="hidden bg-red-900/50 border border-red-500 rounded-lg p-4 mb-4">
+                <i class="fa-solid fa-ban text-3xl text-red-500 mb-2"></i><h3 class="text-red-400 font-bold text-sm mb-1">Ad Blocker Detected!</h3><p class="text-xs text-white">Disable Ad Blocker to unlock.</p>
+            </div>
+            <div id="ad-progress-badge" class="bg-indigo-500/20 text-indigo-300 text-xs font-bold px-3 py-1 rounded-full mb-4 inline-block border border-indigo-500/30">Ad 1 of 1</div>
+            <div id="ad-timer-container" class="w-24 h-24 mx-auto rounded-full bg-slate-900 border-4 border-slate-700 flex items-center justify-center mb-6 relative shadow-inner">
+                <div class="absolute inset-0 rounded-full border-4 border-transparent ad-timer-circle hidden" id="ad-loader-ring"></div>
+                <span id="ad-timer-text" class="text-3xl font-bold text-white">5</span>
+            </div>
+            <h2 class="text-2xl font-bold mb-2 text-white" id="ad-step-title">Please Wait...</h2>
+            <button id="btn-watch-ad" disabled class="w-full bg-slate-800 text-slate-500 font-bold py-4 rounded-xl transition-all flex justify-center items-center shadow-lg"><span>Wait for Timer...</span></button>
+            <button id="btn-get-link" class="hidden w-full success-gradient text-white font-bold py-4 rounded-xl text-lg shadow-lg shadow-emerald-500/30"><i class="fa-solid fa-arrow-up-right-from-square mr-2"></i> GET LINK</button>
+        </div>
+    </div>
+
+    <script>
+        // --- API CONFIGURATION ---
+        const SUPABASE_URL = 'https://nfjgjusfvuatjytfpfhf.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'sb_publishable_aPROutC-ZbCxrxsJat8oFQ_2vI-eoaU';
+        const VERCEL_API_URL = 'https://my-app.vercel.app/api'; 
+        
+        const BOT_USERNAME = 'TGShortUrlBot'; 
+        const APP_SHORT_NAME = 'TeleShortLink'; 
+
+        let dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let currentUserData = null;
+        let adminSettings = { cpm: 2, ad_time: 5, ads_per_link: 1, refer_percent: 10, min_withdraw: 5.0, maintenance_mode: false, payment_methods: "UPI" };
+        
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.setHeaderColor('#0f172a');
+
+        let currentAdStep = 1; let totalAdsRequired = 1;
+        window.invalidClickReason = null; 
+
+        function safeAlert(msg) { try { tg.showAlert(msg); } catch(e) { alert(msg); } }
+        function copyText(text) {
+            const el = document.createElement('textarea'); el.value = text; document.body.appendChild(el); el.select();
+            try { document.execCommand('copy'); safeAlert("Copied to clipboard!"); } catch (e) {} document.body.removeChild(el);
+        }
+
+        function switchPage(pageId) {
+            document.querySelectorAll('.page-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(pageId).classList.remove('hidden');
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.querySelector(`.nav-btn[data-target="${pageId}"]`).classList.add('active');
+            
+            if(pageId === 'page-links') loadLinks();
+            if(pageId === 'page-home') generateDateReport();
+            if(pageId === 'page-refer') fetchReferralDetails();
+            if(pageId === 'page-wallet') loadWithdrawalHistory();
+        }
+
+        async function initApp() {
+            try {
+                await loadAdminSettings();
+
+                // Check Maintenance Mode
+                if (adminSettings.maintenance_mode) {
+                    document.getElementById('ui-loading').classList.add('hidden');
+                    document.getElementById('ui-maintenance').classList.remove('hidden');
+                    return; // Stop app execution
+                }
+
+                let startParam = tg.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get('link');
+                
+                if (tg.initDataUnsafe?.user) {
+                    const user = tg.initDataUnsafe.user;
+                    const { data: existUser } = await dbClient.from('users').select('*').eq('telegram_id', user.id).single();
+                    if (existUser && existUser.is_blocked) return document.getElementById('loading-title').innerText = "Account Blocked";
+
+                    if (!existUser) {
+                        await dbClient.from('users').insert([{ telegram_id: user.id, first_name: user.first_name, username: user.username }]);
+                        if (startParam && startParam.startsWith('ref_')) {
+                            const referrerId = parseInt(startParam.replace('ref_', ''), 10);
+                            if (referrerId && referrerId !== user.id) {
+                                await dbClient.from('referrals').insert([{ referrer_tg_id: referrerId, referred_tg_id: user.id, status: 'pending' }]);
+                                try {
+                                    fetch(`${VERCEL_API_URL}/process_referral`, {
+                                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ referrer_id: referrerId, new_user: user })
+                                    });
+                                } catch(e) {}
+                            }
+                        }
+                    }
+                    currentUserData = existUser || { telegram_id: user.id, balance: 0, today_earnings: 0, total_clicks: 0, id: null };
+                } else if (!startParam) { return document.getElementById('loading-text').innerText = "Open inside Telegram App."; }
+
+                if (startParam && startParam.startsWith('link_')) {
+                    window.currentShortId = startParam.replace('link_', '');
+                    await verifyLinkStatus(); 
+                    startAdFlow();
+                } else {
+                    document.getElementById('ui-loading').classList.add('hidden');
+                    document.getElementById('ui-main-app').classList.remove('hidden');
+                    setupDashboard();
+                }
+            } catch(e) { document.getElementById('loading-text').innerText = "Error: " + e.message; }
+        }
+
+        async function loadAdminSettings() {
+            const { data } = await dbClient.from('settings').select('*').limit(1).single();
+            if(data) adminSettings = { ...adminSettings, ...data };
+            totalAdsRequired = adminSettings.ads_per_link || 1;
+        }
+
+        async function verifyLinkStatus() {
+            try {
+                const { data: linkData } = await dbClient.from('links').select('id, user_id').eq('short_id', window.currentShortId).single();
+                if(linkData && currentUserData) {
+                    if(linkData.user_id === currentUserData.id) { window.invalidClickReason = "self"; return; }
+                    if(currentUserData.telegram_id) {
+                        const { data: logs } = await dbClient.from('click_logs').select('id').eq('link_id', linkData.id).eq('clicker_tg_id', currentUserData.telegram_id);
+                        if(logs && logs.length > 0) window.invalidClickReason = "duplicate";
+                    }
+                }
+            } catch(e) {}
+        }
+
+        function setupDashboard() {
+            // Popup
+            document.getElementById('warning-popup').classList.remove('hidden');
+            
+            // Header Info
+            const u = tg.initDataUnsafe?.user;
+            if(u) {
+                document.getElementById('user-greeting').innerText = `Hello, ${u.first_name}!`;
+                document.getElementById('profile-name').innerText = u.first_name;
+                document.getElementById('profile-avatar').innerText = u.first_name.charAt(0);
+                document.getElementById('profile-id').innerText = `ID: ${u.id}`;
+                document.getElementById('referral-link-display').innerText = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=ref_${u.id}`;
+            }
+
+            // Stats
+            document.getElementById('header-balance').innerText = `$${parseFloat(currentUserData.balance || 0).toFixed(2)}`;
+            document.getElementById('wallet-balance-page').innerText = `$${parseFloat(currentUserData.balance || 0).toFixed(2)}`;
+            document.getElementById('stat-today-earn').innerText = `$${parseFloat(currentUserData.today_earnings || 0).toFixed(4)}`;
+            document.getElementById('stat-views').innerText = currentUserData.total_clicks || 0;
+            document.getElementById('stat-cpm').innerText = `$${parseFloat(adminSettings.cpm || 0).toFixed(2)}`;
+            document.getElementById('refer-commission').innerText = `${adminSettings.refer_percent || 10}%`;
+            document.getElementById('min-withdraw-display').innerText = `$${parseFloat(adminSettings.min_withdraw || 5).toFixed(2)}`;
+
+            // Profile Links
+            if(adminSettings.tg_channel_url) { document.getElementById('link-tg').href = adminSettings.tg_channel_url; document.getElementById('link-tg').classList.remove('hidden'); document.getElementById('link-tg').classList.add('flex'); }
+            if(adminSettings.yt_channel_url) { document.getElementById('link-yt').href = adminSettings.yt_channel_url; document.getElementById('link-yt').classList.remove('hidden'); document.getElementById('link-yt').classList.add('flex'); if(adminSettings.tg_channel_url) document.getElementById('div-line-yt').classList.remove('hidden'); }
+            if(adminSettings.privacy_url) { document.getElementById('link-privacy').href = adminSettings.privacy_url; document.getElementById('link-privacy').classList.remove('hidden'); document.getElementById('link-privacy').classList.add('flex'); }
+            if(adminSettings.terms_url) { document.getElementById('link-terms').href = adminSettings.terms_url; document.getElementById('link-terms').classList.remove('hidden'); document.getElementById('link-terms').classList.add('flex'); }
+
+            // Withdraw Select Methods
+            const methods = (adminSettings.payment_methods || "UPI").split(',');
+            const sel = document.getElementById('withdraw-method');
+            sel.innerHTML = '<option value="">Choose Method...</option>';
+            methods.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.trim(); opt.innerText = m.trim();
+                sel.appendChild(opt);
+            });
+
+            // Listeners
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', function() { switchPage(this.getAttribute('data-target')); }));
+            
+            document.getElementById('btn-shorten').addEventListener('click', async function() {
+                const url = document.getElementById('long-url-input').value.trim();
+                if (!url.startsWith('http')) return safeAlert("Please enter a valid URL (http/https)"); 
+                this.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>'; this.disabled = true;
+                try {
+                    const shortId = Math.random().toString(36).substring(2, 8);
+                    await dbClient.from('links').insert([{ original_url: url, short_id: shortId, user_id: currentUserData.id }]);
+                    document.getElementById('short-link-display').innerText = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=link_${shortId}`;
+                    document.getElementById('shorten-result').classList.remove('hidden');
+                    document.getElementById('long-url-input').value = '';
+                } catch (e) { safeAlert("Error generating link."); } 
+                finally { this.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i><span>Shorten & Earn</span>'; this.disabled = false; }
+            });
+
+            document.getElementById('btn-copy-link').addEventListener('click', () => copyText(document.getElementById('short-link-display').innerText));
+            document.getElementById('btn-copy-referral').addEventListener('click', () => copyText(document.getElementById('referral-link-display').innerText));
+
+            document.getElementById('report-month').value = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+            document.getElementById('report-month').addEventListener('change', generateDateReport);
+            generateDateReport(); fetchReferralDetails();
+        }
+
+        // --- WITHDRAWAL LOGIC ---
+        window.submitWithdrawal = async function() {
+            const method = document.getElementById('withdraw-method').value;
+            const details = document.getElementById('withdraw-details').value.trim();
+            const amount = parseFloat(document.getElementById('withdraw-amount').value);
+            const minW = parseFloat(adminSettings.min_withdraw || 5);
+            const bal = parseFloat(currentUserData.balance || 0);
+
+            if(!method) return safeAlert("Please select a payment method.");
+            if(!details) return safeAlert("Please enter payment details.");
+            if(!amount || isNaN(amount) || amount < minW) return safeAlert(`Minimum withdrawal is $${minW.toFixed(2)}`);
+            if(amount > bal) return safeAlert("Insufficient balance!");
+
+            const btn = document.getElementById('btn-submit-withdraw');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Processing...</span>'; btn.disabled = true;
+
+            try {
+                const newBal = bal - amount;
+                // 1. Deduct Balance
+                await dbClient.from('users').update({ balance: newBal }).eq('id', currentUserData.id);
+                // 2. Insert Request
+                await dbClient.from('withdrawals').insert([{
+                    user_id: currentUserData.id,
+                    username: tg.initDataUnsafe?.user?.username || tg.initDataUnsafe?.user?.first_name || 'User',
+                    amount: amount, method: method, details: details, status: 'pending'
+                }]);
+
+                currentUserData.balance = newBal; // Update local
+                document.getElementById('header-balance').innerText = `$${newBal.toFixed(2)}`;
+                document.getElementById('wallet-balance-page').innerText = `$${newBal.toFixed(2)}`;
+                document.getElementById('withdraw-amount').value = '';
+                document.getElementById('withdraw-details').value = '';
+                safeAlert("Withdrawal Request Submitted Successfully!");
+                loadWithdrawalHistory();
+            } catch(e) { safeAlert("Error submitting request."); }
+            
+            btn.innerHTML = '<i class="fa-solid fa-money-bill-transfer"></i><span>Submit Request</span>'; btn.disabled = false;
+        }
+
+        async function loadWithdrawalHistory() {
+            const list = document.getElementById('withdrawal-history-list');
+            try {
+                const { data } = await dbClient.from('withdrawals').select('*').eq('user_id', currentUserData.id).order('created_at', { ascending: false });
+                if(!data || data.length === 0) return list.innerHTML = '<div class="glass-panel p-6 text-center text-slate-500 text-xs">No transactions yet.</div>';
+                
+                list.innerHTML = '';
+                data.forEach(w => {
+                    const dateStr = new Date(w.created_at).toLocaleDateString();
+                    let color = 'text-amber-400'; let icon = 'fa-clock';
+                    if(w.status === 'approved') { color = 'text-emerald-400'; icon = 'fa-check-double'; }
+                    if(w.status === 'rejected') { color = 'text-red-400'; icon = 'fa-xmark'; }
+
+                    list.innerHTML += `
+                        <div class="glass-panel p-4 flex justify-between items-center mb-3">
+                            <div>
+                                <div class="font-bold text-white text-sm mb-1">${w.method}</div>
+                                <div class="text-[10px] text-slate-400">${dateStr}</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-bold text-white mb-1">$${w.amount.toFixed(2)}</div>
+                                <div class="text-[10px] font-bold uppercase ${color}"><i class="fa-solid ${icon} mr-1"></i>${w.status}</div>
+                            </div>
+                        </div>`;
+                });
+            } catch(e) {}
+        }
+
+        // --- FETCH LINKS & REPORT ---
+        async function loadLinks() {
+            const list = document.getElementById('links-list');
+            try {
+                const { data } = await dbClient.from('links').select('*').eq('user_id', currentUserData.id).order('created_at', { ascending: false }).limit(20);
+                if (!data || data.length === 0) return list.innerHTML = '<div class="text-center text-slate-500 py-10">No links created yet.</div>';
+                list.innerHTML = '';
+                data.forEach(l => {
+                    const shortUrl = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=link_${l.short_id}`;
+                    list.innerHTML += `<div class="glass-panel p-4 mb-3"><div class="flex justify-between items-start mb-2"><div class="truncate w-3/4"><span class="text-indigo-400 text-xs block truncate">${shortUrl}</span><span class="text-[10px] text-slate-500 block truncate">${l.original_url}</span></div><button onclick="copyText('${shortUrl}')" class="bg-slate-800 p-2 rounded text-indigo-400 hover:text-white"><i class="fa-solid fa-copy"></i></button></div><div class="flex space-x-4 pt-2 border-t border-slate-700/50 text-xs"><div><i class="fa-solid fa-eye text-slate-400"></i> <span class="text-white font-bold">${l.clicks || 0}</span></div><div><i class="fa-solid fa-coins text-emerald-400"></i> <span class="text-emerald-400 font-bold">$${parseFloat(l.earnings || 0).toFixed(4)}</span></div></div></div>`;
+                });
+            } catch(e) {}
+        }
+
+        async function fetchReferralDetails() {
+            if(!currentUserData.telegram_id) return;
+            const listContainer = document.getElementById('referrals-list');
+            try {
+                const { data: refs } = await dbClient.from('referrals').select('*').eq('referrer_tg_id', currentUserData.telegram_id).order('created_at', { ascending: false });
+                if (!refs || refs.length === 0) {
+                    listContainer.innerHTML = '<div class="text-center text-slate-500 py-6 text-sm glass-panel">You have not referred anyone yet.</div>';
+                    document.getElementById('stat-referrals').innerText = 0; return;
+                }
+                const refIds = refs.map(r => r.referred_tg_id);
+                const { data: usersData } = await dbClient.from('users').select('telegram_id, first_name').in('telegram_id', refIds);
+                let userNames = {}; if(usersData) usersData.forEach(u => userNames[u.telegram_id] = u.first_name);
+
+                listContainer.innerHTML = '';
+                refs.forEach(ref => {
+                    const uName = userNames[ref.referred_tg_id] || "Unknown User";
+                    listContainer.innerHTML += `<div class="glass-panel p-4 flex justify-between items-center mb-3"><span class="font-bold text-white text-sm"><i class="fa-solid fa-user text-slate-500 mr-2"></i>${uName}</span><span class="bg-amber-500/20 text-amber-400 px-2 py-1 rounded text-[10px] font-bold">Registered</span></div>`;
+                });
+                document.getElementById('stat-referrals').innerText = refs.length;
+            } catch (e) { listContainer.innerHTML = '<div class="text-center text-red-400 py-6 text-sm glass-panel">Error loading data.</div>'; }
+        }
+
+        async function generateDateReport() {
+            const listDiv = document.getElementById('earnings-list');
+            const monthStr = document.getElementById('report-month').value;
+            if(!monthStr || !currentUserData.id) return;
+            listDiv.innerHTML = '<div class="text-center text-slate-500 py-4"><i class="fa-solid fa-circle-notch fa-spin"></i> Fetching...</div>';
+
+            const [year, month] = monthStr.split('-');
+            const startDate = new Date(year, month - 1, 1).toISOString();
+            const endDate = new Date(year, month, 1).toISOString();
+
+            try {
+                const { data: links } = await dbClient.from('links').select('id').eq('user_id', currentUserData.id);
+                if(!links || links.length === 0) return listDiv.innerHTML = '<div class="text-center text-slate-500 text-xs py-4">No data found.</div>';
+                
+                const linkIds = links.map(l => l.id);
+                const { data: clicks } = await dbClient.from('click_logs').select('created_at').in('link_id', linkIds).gte('created_at', startDate).lt('created_at', endDate);
+                if(!clicks || clicks.length === 0) return listDiv.innerHTML = '<div class="text-center text-slate-500 text-xs py-4">No earnings this month.</div>';
+
+                let dailyData = {};
+                clicks.forEach(c => {
+                    const dateStr = new Date(c.created_at).toLocaleDateString();
+                    if(!dailyData[dateStr]) dailyData[dateStr] = 0; dailyData[dateStr] += (adminSettings.cpm / 1000);
+                });
+
+                listDiv.innerHTML = '';
+                for (const [date, earn] of Object.entries(dailyData)) {
+                    listDiv.innerHTML += `<div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg border border-slate-700/50"><span class="text-sm text-slate-300"><i class="fa-regular fa-calendar text-indigo-400 mr-2"></i>${date}</span><span class="font-bold text-emerald-400">+$${earn.toFixed(4)}</span></div>`;
+                }
+            } catch(e) {}
+        }
+
+        // AD FLOW LOGIC
+        function startAdFlow() {
+            document.getElementById('ui-loading').classList.add('hidden'); document.getElementById('ui-ad-viewer').classList.remove('hidden'); setupAdStep();
+        }
+
+        function setupAdStep() {
+            document.getElementById('ad-progress-badge').innerText = `Ad ${currentAdStep} of ${totalAdsRequired}`;
+            document.getElementById('ad-timer-text').classList.remove('hidden'); document.getElementById('ad-loader-ring').classList.add('hidden');
+            let timeLeft = adminSettings.ad_timer || 5;
+            const btn = document.getElementById('btn-watch-ad'); const timerEl = document.getElementById('ad-timer-text');
+            btn.disabled = true; btn.className = "w-full bg-slate-800 text-slate-500 font-bold py-4 rounded-xl flex justify-center items-center shadow-inner";
+            btn.innerHTML = `Wait ${timeLeft}s...`;
+            
+            const interval = setInterval(() => {
+                timeLeft--; timerEl.innerText = timeLeft; btn.innerHTML = `Wait ${timeLeft}s...`;
+                if (timeLeft <= 0) { clearInterval(interval); checkAdBlocker(btn, timerEl); }
+            }, 1000);
+        }
+
+        function checkAdBlocker(btn, timerEl) {
+            if (typeof show_12122788 === 'undefined') {
+                document.getElementById('ad-blocker-warning').classList.remove('hidden');
+                document.getElementById('ad-step-title').innerText = "Action Required";
+                btn.classList.add('hidden'); timerEl.innerHTML = '<i class="fa-solid fa-ban text-red-500 text-xl"></i>';
+            } else {
+                timerEl.innerHTML = '<i class="fa-solid fa-play text-indigo-500"></i>';
+                btn.disabled = false; btn.className = "w-full primary-gradient text-white font-bold py-4 rounded-xl flex justify-center items-center shadow-lg shadow-indigo-500/30";
+                btn.innerHTML = "Click to Watch Ad"; btn.onclick = executeAdClick;
+            }
+        }
+
+        function executeAdClick() {
+            const btn = document.getElementById('btn-watch-ad'); btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading Ad...`;
+            document.getElementById('ad-loader-ring').classList.remove('hidden'); document.getElementById('ad-timer-text').classList.add('hidden');
+            if (typeof show_12122788 === 'function') { show_12122788().then(() => { handleAdSuccess(); }).catch(() => { handleAdSuccess(); }); }
+        }
+
+        function handleAdSuccess() {
+            if (currentAdStep < totalAdsRequired) { currentAdStep++; setupAdStep(); } else { showFinalLink(); }
+        }
+
+        async function showFinalLink() {
+            document.getElementById('btn-watch-ad').classList.add('hidden'); document.getElementById('ad-timer-container').classList.add('hidden');
+            document.getElementById('ad-progress-badge').classList.add('hidden'); document.getElementById('ad-step-title').innerText = "Link Unlocked!";
+            
+            const getLinkBtn = document.getElementById('btn-get-link'); getLinkBtn.classList.remove('hidden');
+            
+            if (window.invalidClickReason === "self") {
+                safeAlert("⚠️ This is your own link! Earnings will not be added.");
+            } else if (window.invalidClickReason === "duplicate") {
+                safeAlert("⚠️ You already viewed this link! Earnings won't be duplicated.");
+            } else {
+                let clickerId = tg.initDataUnsafe?.user?.id || 0;
+                try { fetch(`${VERCEL_API_URL}/reward`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ short_id: window.currentShortId, clicker_tg_id: clickerId }) }); } catch(e){}
+            }
+
+            const { data } = await dbClient.from('links').select('original_url').eq('short_id', window.currentShortId).single();
+            if(data) getLinkBtn.onclick = () => tg.openLink(data.original_url);
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+                      </html>
