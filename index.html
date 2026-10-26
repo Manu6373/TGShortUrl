@@ -395,6 +395,69 @@
         }
 
         async function initApp() {
+    try {
+        await loadAdminSettings();
+
+        if (adminSettings.maintenance_mode) {
+            document.getElementById('ui-loading').classList.add('hidden');
+            document.getElementById('ui-maintenance').classList.remove('hidden');
+            return;
+        }
+
+        const startParam =
+            tg.initDataUnsafe?.start_param ||
+            new URLSearchParams(window.location.search).get('link');
+
+        // Keep the existing ad-viewing flow working.
+        if (startParam && startParam.startsWith('link_')) {
+            if (!tg.initDataUnsafe?.user) {
+                document.getElementById('loading-text').innerText =
+                    'Please open this link inside Telegram.';
+                return;
+            }
+
+            const telegramUser = tg.initDataUnsafe.user;
+
+            const { data: existingUser, error } = await dbClient
+                .from('users')
+                .select('*')
+                .eq('telegram_id', telegramUser.id)
+                .maybeSingle();
+
+            if (error) throw error;
+
+            currentUserData = existingUser || {
+                telegram_id: telegramUser.id,
+                id: null,
+                balance: 0,
+                today_earnings: 0,
+                total_clicks: 0
+            };
+
+            window.currentShortId = startParam.replace('link_', '');
+            await verifyLinkStatus();
+            startAdFlow();
+            return;
+        }
+
+        // Require Telegram to open the dashboard.
+        if (!tg.initDataUnsafe?.user) {
+            document.getElementById('loading-text').innerText =
+                'Please open this Mini App inside Telegram.';
+            return;
+        }
+
+        // Require fresh email login on each dashboard opening.
+        await dbClient.auth.signOut();
+
+        currentUserData = null;
+        showAuthScreen();
+
+    } catch (e) {
+        document.getElementById('loading-text').innerText =
+            'Error: ' + e.message;
+    }
+        }
             try {
                 await loadAdminSettings();
 
