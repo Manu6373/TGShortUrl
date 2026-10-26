@@ -506,11 +506,29 @@
         }
 
         async function loadAdminSettings() {
-            const { data } = await dbClient.from('settings').select('*').limit(1).single();
-            if(data) adminSettings = { ...adminSettings, ...data };
-            totalAdsRequired = adminSettings.ads_per_link || 1;
+    try {
+        const { data, error } = await dbClient
+            .from('settings')
+            .select('*')
+            .limit(1)
+            .maybeSingle();
+
+        if (error) {
+            console.error("Settings loading error:", error);
+            throw new Error("Settings: " + error.message);
         }
 
+        if (data) {
+            adminSettings = { ...adminSettings, ...data };
+        }
+
+        totalAdsRequired = adminSettings.ads_per_link || 1;
+
+    } catch (error) {
+        console.error("loadAdminSettings failed:", error);
+        throw error;
+    }
+        }
         async function verifyLinkStatus() {
             try {
                 const { data: linkData } = await dbClient.from('links').select('id, user_id').eq('short_id', window.currentShortId).single();
