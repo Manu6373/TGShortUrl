@@ -458,52 +458,7 @@
             'Error: ' + e.message;
     }
         }
-            try {
-                await loadAdminSettings();
-
-                // Check Maintenance Mode
-                if (adminSettings.maintenance_mode) {
-                    document.getElementById('ui-loading').classList.add('hidden');
-                    document.getElementById('ui-maintenance').classList.remove('hidden');
-                    return; // Stop app execution
-                }
-
-                let startParam = tg.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get('link');
-                
-                if (tg.initDataUnsafe?.user) {
-                    const user = tg.initDataUnsafe.user;
-                    const { data: existUser } = await dbClient.from('users').select('*').eq('telegram_id', user.id).single();
-                    if (existUser && existUser.is_blocked) return document.getElementById('loading-title').innerText = "Account Blocked";
-
-                    if (!existUser) {
-                        await dbClient.from('users').insert([{ telegram_id: user.id, first_name: user.first_name, username: user.username }]);
-                        if (startParam && startParam.startsWith('ref_')) {
-                            const referrerId = parseInt(startParam.replace('ref_', ''), 10);
-                            if (referrerId && referrerId !== user.id) {
-                                await dbClient.from('referrals').insert([{ referrer_tg_id: referrerId, referred_tg_id: user.id, status: 'pending' }]);
-                                try {
-                                    fetch(`${VERCEL_API_URL}/process_referral`, {
-                                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ referrer_id: referrerId, new_user: user })
-                                    });
-                                } catch(e) {}
-                            }
-                        }
-                    }
-                    currentUserData = existUser || { telegram_id: user.id, balance: 0, today_earnings: 0, total_clicks: 0, id: null };
-                } else if (!startParam) { return document.getElementById('loading-text').innerText = "Open inside Telegram App."; }
-
-                if (startParam && startParam.startsWith('link_')) {
-                    window.currentShortId = startParam.replace('link_', '');
-                    await verifyLinkStatus(); 
-                    startAdFlow();
-                } else {
-                    document.getElementById('ui-loading').classList.add('hidden');
-                    document.getElementById('ui-main-app').classList.remove('hidden');
-                    setupDashboard();
-                }
-            } catch(e) { document.getElementById('loading-text').innerText = "Error: " + e.message; }
-        }
+            
 
         async function loadAdminSettings() {
     try {
