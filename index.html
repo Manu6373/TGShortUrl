@@ -722,15 +722,13 @@
     // Trigger popup ad while countdown is running
     if (typeof show_12122788 === 'function') {
         try {
-            const popupResult = show_12122788('pop');
-
-            if (popupResult && typeof popupResult.catch === 'function') {
-                popupResult.catch(error => {
-                    console.log('Popup ad unavailable:', error);
-                });
-            }
-        } catch (error) {
-            console.log('Popup ad error:', error);
+            const popupResult = show_12122788('pop')
+    .then(() => {
+        console.log('Rewarded Popup completed');
+    })
+    .catch(error => {
+        console.error('Rewarded Popup error:', error);
+    });
         }
     }
 
