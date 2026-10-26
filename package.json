@@ -1,1 +1,19 @@
-
+{
+  "name": "teleshort-api",
+  "version": "1.0.0",
+  "description": "Backend API for TeleShort Mini App",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node api/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "engines": {
+    "node": ">=18.x"
+  },
+  "author": "WebApp Sikho",
+  "license": "ISC"
+}
