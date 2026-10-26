@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     // --- SMART BUTTON LOGIC ---
     let buttonConfig = {};
     // Updated fallback URL to your live Vercel domain
-    const finalUrl = mini_app_url || "https://my-app.vercel.app";
+    const finalUrl = mini_app_url || "https://tgshorturl.vercel.app";
     
     // Agar t.me link hai toh normal 'url' button banayega, warna 'web_app' button banayega
     if (finalUrl.includes('t.me')) {
