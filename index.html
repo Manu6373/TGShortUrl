@@ -843,16 +843,14 @@ document.getElementById("auth-form").addEventListener("submit", async function(e
 
             if (error) throw error;
 
+            message.className = "text-sm text-center mt-4 text-emerald-400";
+
             if (!data.session) {
-                message.className = "text-sm text-center mt-4 text-emerald-400";
                 message.innerText =
-                    "Account created! Check your email to confirm, then return and log in.";
+                    "Registration successful! Check your email to confirm, then log in.";
                 setAuthMode("login");
                 return;
             }
-
-            message.innerText = "Account created. Please log in.";
-            setAuthMode("login");
         } else {
             const { error } = await dbClient.auth.signInWithPassword({
                 email,
@@ -860,17 +858,88 @@ document.getElementById("auth-form").addEventListener("submit", async function(e
             });
 
             if (error) throw error;
-
-            message.className = "text-sm text-center mt-4 text-emerald-400";
-            message.innerText =
-                "Login successful. The account connection step is not configured yet.";
         }
+
+        const { data: authData, error: authError } =
+            await dbClient.auth.getUser();
+
+        if (authError) throw authError;
+
+        const authUser = authData.user;
+        const telegramUser = tg.initDataUnsafe?.user;
+
+        if (!telegramUser) {
+            await dbClient.auth.signOut();
+            throw new Error("Please open this app inside Telegram.");
+        }
+
+        const { data: existingUser, error: findError } = await dbClient
+            .from("users")
+            .select("*")
+            .eq("telegram_id", telegramUser.id)
+            .maybeSingle();
+
+        if (findError) throw findError;
+
+        if (existingUser?.auth_user_id &&
+            existingUser.auth_user_id !== authUser.id) {
+            await dbClient.auth.signOut();
+            throw new Error(
+                "This Telegram account is already linked to another email."
+            );
+        }
+
+        if (!existingUser) {
+            const { data: newUser, error: insertError } = await dbClient
+                .from("users")
+                .insert([{
+                    telegram_id: telegramUser.id,
+                    first_name: telegramUser.first_name || "",
+                    username: telegramUser.username || null,
+                    auth_user_id: authUser.id
+                }])
+                .select("*")
+                .single();
+
+            if (insertError) throw insertError;
+
+            currentUserData = newUser;
+        } else {
+            if (existingUser.auth_user_id !== authUser.id) {
+                const { data: updatedUser, error: updateError } =
+                    await dbClient
+                        .from("users")
+                        .update({ auth_user_id: authUser.id })
+                        .eq("id", existingUser.id)
+                        .is("auth_user_id", null)
+                        .select("*")
+                        .maybeSingle();
+
+                if (updateError) throw updateError;
+
+                if (!updatedUser) {
+                    throw new Error("Account linking failed. Please try again.");
+                }
+
+                currentUserData = updatedUser;
+            } else {
+                currentUserData = existingUser;
+            }
+        }
+
+        document.getElementById("ui-auth").classList.add("hidden");
+        document.getElementById("ui-loading").classList.add("hidden");
+        document.getElementById("ui-main-app").classList.remove("hidden");
+
+        setupDashboard();
+
     } catch (error) {
         message.className = "text-sm text-center mt-4 text-red-400";
         message.innerText = error.message || "Authentication failed.";
     } finally {
         button.disabled = false;
-        button.innerText = authMode === "login" ? "Login" : "Create Account";
+        button.innerText =
+            authMode === "login" ? "Login" : "Create Account";
     }
 });
 
