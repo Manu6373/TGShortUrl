@@ -718,7 +718,114 @@
             const { data } = await dbClient.from('links').select('original_url').eq('short_id', window.currentShortId).single();
             if(data) getLinkBtn.onclick = () => tg.openLink(data.original_url);
         }
+// --- EMAIL AUTHENTICATION ---
+let authMode = "login";
 
+function showAuthScreen() {
+    document.getElementById("ui-loading").classList.add("hidden");
+    document.getElementById("ui-main-app").classList.add("hidden");
+    document.getElementById("ui-ad-viewer").classList.add("hidden");
+    document.getElementById("ui-auth").classList.remove("hidden");
+    document.getElementById("auth-message").innerText = "";
+}
+
+function setAuthMode(mode) {
+    authMode = mode;
+
+    document.getElementById("auth-tab-login").className =
+        mode === "login"
+            ? "primary-gradient rounded-xl py-3 font-bold text-white"
+            : "bg-slate-800 rounded-xl py-3 font-bold text-slate-300";
+
+    document.getElementById("auth-tab-register").className =
+        mode === "register"
+            ? "primary-gradient rounded-xl py-3 font-bold text-white"
+            : "bg-slate-800 rounded-xl py-3 font-bold text-slate-300";
+
+    document.getElementById("auth-submit").innerText =
+        mode === "login" ? "Login" : "Create Account";
+
+    document.getElementById("auth-password").autocomplete =
+        mode === "login" ? "current-password" : "new-password";
+
+    document.getElementById("auth-message").innerText = "";
+}
+
+document.getElementById("auth-tab-login").addEventListener("click", () => {
+    setAuthMode("login");
+});
+
+document.getElementById("auth-tab-register").addEventListener("click", () => {
+    setAuthMode("register");
+});
+
+document.getElementById("auth-form").addEventListener("submit", async function(event) {
+    event.preventDefault();
+
+    const email = document.getElementById("auth-email").value.trim();
+    const password = document.getElementById("auth-password").value;
+    const button = document.getElementById("auth-submit");
+    const message = document.getElementById("auth-message");
+
+    button.disabled = true;
+    button.innerText = "Please wait...";
+    message.innerText = "";
+
+    try {
+        if (authMode === "register") {
+            const { data, error } = await dbClient.auth.signUp({
+                email,
+                password
+            });
+
+            if (error) throw error;
+
+            if (!data.session) {
+                message.className = "text-sm text-center mt-4 text-emerald-400";
+                message.innerText =
+                    "Account created! Check your email to confirm, then return and log in.";
+                setAuthMode("login");
+                return;
+            }
+
+            message.innerText = "Account created. Please log in.";
+            setAuthMode("login");
+        } else {
+            const { error } = await dbClient.auth.signInWithPassword({
+                email,
+                password
+            });
+
+            if (error) throw error;
+
+            message.className = "text-sm text-center mt-4 text-emerald-400";
+            message.innerText =
+                "Login successful. The account connection step is not configured yet.";
+        }
+    } catch (error) {
+        message.className = "text-sm text-center mt-4 text-red-400";
+        message.innerText = error.message || "Authentication failed.";
+    } finally {
+        button.disabled = false;
+        button.innerText = authMode === "login" ? "Login" : "Create Account";
+    }
+});
+
+document.getElementById("auth-forgot").addEventListener("click", async function() {
+    const email = document.getElementById("auth-email").value.trim();
+
+    if (!email) {
+        document.getElementById("auth-message").innerText =
+            "Enter your email address first.";
+        return;
+    }
+
+    const { error } = await dbClient.auth.resetPasswordForEmail(email);
+
+    document.getElementById("auth-message").innerText = error
+        ? error.message
+        : "If the email is registered, password reset instructions will be sent.";
+});
         window.onload = initApp;
     </script>
 </body>
