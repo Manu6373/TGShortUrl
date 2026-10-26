@@ -701,17 +701,51 @@
         }
 
         function setupAdStep() {
-            document.getElementById('ad-progress-badge').innerText = `Ad ${currentAdStep} of ${totalAdsRequired}`;
-            document.getElementById('ad-timer-text').classList.remove('hidden'); document.getElementById('ad-loader-ring').classList.add('hidden');
-            let timeLeft = adminSettings.ad_timer || 5;
-            const btn = document.getElementById('btn-watch-ad'); const timerEl = document.getElementById('ad-timer-text');
-            btn.disabled = true; btn.className = "w-full bg-slate-800 text-slate-500 font-bold py-4 rounded-xl flex justify-center items-center shadow-inner";
-            btn.innerHTML = `Wait ${timeLeft}s...`;
-            
-            const interval = setInterval(() => {
-                timeLeft--; timerEl.innerText = timeLeft; btn.innerHTML = `Wait ${timeLeft}s...`;
-                if (timeLeft <= 0) { clearInterval(interval); checkAdBlocker(btn, timerEl); }
-            }, 1000);
+    document.getElementById('ad-progress-badge').innerText =
+        `Ad ${currentAdStep} of ${totalAdsRequired}`;
+
+    document.getElementById('ad-timer-text').classList.remove('hidden');
+    document.getElementById('ad-loader-ring').classList.add('hidden');
+
+    let timeLeft = Math.max(1, Number(adminSettings.ad_timer) || 5);
+
+    const btn = document.getElementById('btn-watch-ad');
+    const timerEl = document.getElementById('ad-timer-text');
+
+    btn.disabled = true;
+    btn.className =
+        "w-full bg-slate-800 text-slate-500 font-bold py-4 rounded-xl flex justify-center items-center shadow-inner";
+
+    btn.innerHTML = `Wait ${timeLeft}s...`;
+    timerEl.innerText = timeLeft;
+
+    // Trigger popup ad while countdown is running
+    if (typeof show_12122788 === 'function') {
+        try {
+            const popupResult = show_12122788('pop');
+
+            if (popupResult && typeof popupResult.catch === 'function') {
+                popupResult.catch(error => {
+                    console.log('Popup ad unavailable:', error);
+                });
+            }
+        } catch (error) {
+            console.log('Popup ad error:', error);
+        }
+    }
+
+    const interval = setInterval(() => {
+        timeLeft--;
+
+        timerEl.innerText = timeLeft;
+        btn.innerHTML = `Wait ${timeLeft}s...`;
+
+        if (timeLeft <= 0) {
+            clearInterval(interval);
+            checkAdBlocker(btn, timerEl);
+        }
+    }, 1000);
+        }
         }
 
         function checkAdBlocker(btn, timerEl) {
