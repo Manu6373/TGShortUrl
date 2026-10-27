@@ -701,45 +701,48 @@
         }
 
         function setupAdStep() {
-    document.getElementById('ad-progress-badge').innerText =
-        `Ad ${currentAdStep} of ${totalAdsRequired}`;
+    const badge = document.getElementById('ad-progress-badge');
+    const timerEl = document.getElementById('ad-timer-text');
+    const btn = document.getElementById('btn-watch-ad');
 
-    document.getElementById('ad-timer-text').classList.remove('hidden');
+    document.getElementById('ad-blocker-warning').classList.add('hidden');
+    document.getElementById('ad-timer-container').classList.remove('hidden');
+    document.getElementById('ad-step-title').innerText = 'Please Wait...';
+    document.getElementById('btn-get-link').classList.add('hidden');
     document.getElementById('ad-loader-ring').classList.add('hidden');
+    timerEl.classList.remove('hidden');
+
+    badge.classList.remove('hidden');
+    badge.innerText = `Ad ${currentAdStep} of ${totalAdsRequired}`;
 
     let timeLeft = Math.max(1, Number(adminSettings.ad_timer) || 5);
 
-    const btn = document.getElementById('btn-watch-ad');
-    const timerEl = document.getElementById('ad-timer-text');
-
+    btn.classList.remove('hidden');
     btn.disabled = true;
     btn.className =
-        "w-full bg-slate-800 text-slate-500 font-bold py-4 rounded-xl flex justify-center items-center shadow-inner";
-
-    btn.innerHTML = `Wait ${timeLeft}s...`;
+        'w-full bg-slate-800 text-slate-500 font-bold py-4 rounded-xl flex justify-center items-center shadow-inner';
+    btn.innerText = `Wait ${timeLeft}s...`;
     timerEl.innerText = timeLeft;
+    btn.onclick = null;
 
-    // Trigger popup ad while countdown is running
-    if (typeof show_12122788 === 'function') {
-        try {
-            const popupResult = show_12122788('pop')
-    .then(() => {
-        console.log('Rewarded Popup completed');
-    })
-    .catch(error => {
-        console.error('Rewarded Popup error:', error);
-    });
+    if (window.adCountdownInterval) {
+        clearInterval(window.adCountdownInterval);
     }
 
-    const interval = setInterval(() => {
+    window.adCountdownInterval = setInterval(() => {
         timeLeft--;
-
         timerEl.innerText = timeLeft;
-        btn.innerHTML = `Wait ${timeLeft}s...`;
+        btn.innerText = `Wait ${timeLeft}s...`;
 
         if (timeLeft <= 0) {
-            clearInterval(interval);
-            checkAdBlocker(btn, timerEl);
+            clearInterval(window.adCountdownInterval);
+            window.adCountdownInterval = null;
+
+            btn.disabled = false;
+            btn.className =
+                'w-full primary-gradient text-white font-bold py-4 rounded-xl flex justify-center items-center shadow-lg';
+            btn.innerText = 'Watch Ad & Continue';
+            btn.onclick = executeAdClick;
         }
     }, 1000);
         }
@@ -756,15 +759,64 @@
             }
         }
 
-        function executeAdClick() {
-            const btn = document.getElementById('btn-watch-ad'); btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading Ad...`;
-            document.getElementById('ad-loader-ring').classList.remove('hidden'); document.getElementById('ad-timer-text').classList.add('hidden');
-            if (typeof show_12122788 === 'function') { show_12122788().then(() => { handleAdSuccess(); }).catch(() => { handleAdSuccess(); }); }
+        async function executeAdClick() {
+    const btn = document.getElementById('btn-watch-ad');
+    const timerEl = document.getElementById('ad-timer-text');
+    const loader = document.getElementById('ad-loader-ring');
+
+    if (typeof window.show_12122788 !== 'function') {
+        safeAlert('Ad is unavailable right now. Please try again later.');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML =
+        '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading Ad...';
+
+    loader.classList.remove('hidden');
+    timerEl.classList.add('hidden');
+
+    try {
+        const ymid =
+            `tg${tg.initDataUnsafe?.user?.id || 'user'}_` +
+            `${window.currentShortId || 'link'}_${currentAdStep}_` +
+            `${Date.now()}`;
+
+        const result = await window.show_12122788({
+            type: 'end',
+            ymid: ymid,
+            requestVar: 'tgshorturl_link'
+        });
+
+        if (result?.reward_event_type !== 'valued') {
+            throw new Error('The ad was not confirmed as a valued event.');
+        }
+
+        handleAdSuccess();
+
+    } catch (error) {
+        console.error('Monetag ad error:', error);
+
+        loader.classList.add('hidden');
+        timerEl.classList.remove('hidden');
+        timerEl.innerText = '!';
+        btn.disabled = false;
+        btn.innerText = 'Retry Ad';
+
+        safeAlert(
+            'The ad could not be verified. Please try again later.'
+        );
+    }
         }
 
         function handleAdSuccess() {
-            if (currentAdStep < totalAdsRequired) { currentAdStep++; setupAdStep(); } else { showFinalLink(); }
-        }
+    if (currentAdStep < totalAdsRequired) {
+        currentAdStep++;
+        setupAdStep();
+    } else {
+        showFinalLink();
+    }
+}
 
         async function showFinalLink() {
             document.getElementById('btn-watch-ad').classList.add('hidden'); document.getElementById('ad-timer-container').classList.add('hidden');
