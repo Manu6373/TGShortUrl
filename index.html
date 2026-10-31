@@ -228,6 +228,18 @@
 
     <script>
         // API CONFIGURATION
+        // DEBUG ERROR DETECTION
+window.addEventListener('error', function(e) {
+    console.error("JavaScript Error:", e.message);
+    document.getElementById('loading-text').innerText =
+        "JS Error: " + e.message;
+});
+
+window.addEventListener('unhandledrejection', function(e) {
+    console.error("Promise Error:", e.reason);
+    document.getElementById('loading-text').innerText =
+        "Connection Error: " + (e.reason?.message || e.reason);
+});
         const SUPABASE_URL = 'https://nfjgjusfvuatjytfpfhf.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_aPROutC-ZbCxrxsJat8oFQ_2vI-eoaU';
         const VERCEL_API_URL = '/api'; 
