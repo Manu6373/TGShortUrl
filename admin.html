@@ -12,7 +12,7 @@
         .glass-panel { background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 1rem; }
     </style>
 </head>
-<body class="flex h-screen overflow-hidden">
+<body class="min-h-screen overflow-x-hidden">
 
     <!-- ADMIN LOGIN -->
     <div id="login-screen" class="absolute inset-0 z-50 bg-[#0f172a] flex items-center justify-center">
@@ -26,7 +26,7 @@
     </div>
 
     <!-- ADMIN DASHBOARD -->
-    <div id="admin-dashboard" class="flex w-full h-full hidden">
+    <div id="admin-dashboard" class="flex w-full min-h-screen hidden">
         <aside class="w-64 bg-slate-900 border-r border-slate-800 p-4 hidden md:flex flex-col">
             <h1 class="text-xl font-bold text-indigo-500 mb-8"><i class="fa-solid fa-bolt mr-2"></i>Admin Panel</h1>
             <nav class="space-y-2 flex-1">
@@ -37,7 +37,15 @@
             </nav>
             <button onclick="adminLogout()" class="w-full p-3 text-left text-red-400 hover:bg-slate-800 rounded">Logout</button>
         </aside>
-        <main id="main-content" class="flex-1 p-8 overflow-y-auto bg-[#0f172a]"></main>
+        <!-- Mobile navigation: visible on small screens -->
+        <nav id="mobile-nav" class="md:hidden fixed bottom-0 inset-x-0 z-50 grid grid-cols-5 gap-1 bg-slate-900/95 border-t border-slate-700 px-1 py-2 shadow-2xl" aria-label="Admin navigation">
+            <button type="button" class="nav-btn rounded-lg px-1 py-2 text-[11px] leading-tight text-white bg-indigo-600" onclick="switchTab('users', this)"><i class="fa-solid fa-users block text-base mb-1"></i>Users</button>
+            <button type="button" class="nav-btn rounded-lg px-1 py-2 text-[11px] leading-tight text-slate-400" onclick="switchTab('withdrawals', this)"><i class="fa-solid fa-wallet block text-base mb-1"></i>Withdrawals</button>
+            <button type="button" class="nav-btn rounded-lg px-1 py-2 text-[11px] leading-tight text-slate-400" onclick="switchTab('settings', this)"><i class="fa-solid fa-gear block text-base mb-1"></i>Settings</button>
+            <button type="button" class="nav-btn rounded-lg px-1 py-2 text-[11px] leading-tight text-slate-400" onclick="switchTab('broadcast', this)"><i class="fa-solid fa-bullhorn block text-base mb-1"></i>Broadcast</button>
+            <button type="button" class="rounded-lg px-1 py-2 text-[11px] leading-tight text-red-400" onclick="adminLogout()"><i class="fa-solid fa-right-from-bracket block text-base mb-1"></i>Logout</button>
+        </nav>
+        <main id="main-content" class="flex-1 min-w-0 p-4 pb-24 md:p-8 overflow-y-auto bg-[#0f172a]"></main>
     </div>
 
     <!-- TEMPLATES -->
@@ -60,6 +68,19 @@
                 <div class="mb-3"><label class="block text-xs font-bold text-slate-400 uppercase">Global CPM ($)</label><input type="number" step="0.01" id="set-cpm" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"></div>
                 <div class="mb-3"><label class="block text-xs font-bold text-slate-400 uppercase">Referral Bonus (%)</label><input type="number" id="set-ref" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"></div>
                 <div class="mb-3"><label class="block text-xs font-bold text-slate-400 uppercase">Min Withdraw ($)</label><input type="number" step="0.5" id="set-min-with" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"></div>
+                <div class="mb-4 rounded-xl border border-slate-700 bg-slate-900/70 p-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <label for="set-withdrawals-enabled" class="block text-sm font-bold text-white">User Withdrawals</label>
+                            <p id="withdrawals-status-text" class="mt-1 text-xs text-slate-400">Enable or temporarily disable withdrawal requests.</p>
+                        </div>
+                        <label class="relative inline-flex cursor-pointer items-center">
+                            <input type="checkbox" id="set-withdrawals-enabled" class="peer sr-only" checked onchange="updateWithdrawalToggleLabel()">
+                            <span class="h-7 w-12 rounded-full bg-slate-600 transition peer-checked:bg-emerald-600 after:absolute after:mt-1 after:ml-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition peer-checked:after:translate-x-5"></span>
+                        </label>
+                    </div>
+                    <span id="withdrawals-toggle-badge" class="mt-3 inline-flex rounded-full bg-emerald-900/60 px-3 py-1 text-xs font-bold text-emerald-300">WITHDRAWALS ON</span>
+                </div>
                 <div class="mb-3"><label class="block text-xs font-bold text-slate-400 uppercase">IP Restrict (Hours)</label><input type="number" id="set-ip-hours" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white" value="24"></div>
             </div>
             
@@ -149,6 +170,7 @@
 
         window.switchTab = function(tab, btn) {
             document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('bg-indigo-600', 'text-white'); b.classList.add('text-slate-400'); });
+            document.querySelectorAll(`.nav-btn[onclick*="switchTab('${tab}'"]`).forEach(b => { b.classList.add('bg-indigo-600', 'text-white'); b.classList.remove('text-slate-400'); });
             if(btn) { btn.classList.add('bg-indigo-600', 'text-white'); btn.classList.remove('text-slate-400'); }
             document.getElementById('main-content').innerHTML = document.getElementById(`tpl-${tab}`).innerHTML;
             if(tab === 'users') loadUsers();
@@ -191,6 +213,8 @@
                 document.getElementById('set-cpm').value = data.cpm || 2;
                 document.getElementById('set-ref').value = data.refer_percent || 10;
                 document.getElementById('set-min-with').value = data.min_withdraw || 5;
+                document.getElementById('set-withdrawals-enabled').checked = data.withdrawals_enabled !== false;
+                updateWithdrawalToggleLabel();
                 document.getElementById('set-timer').value = data.ad_timer || 5;
                 document.getElementById('set-ip-hours').value = data.ip_restrict_hours || 24;
                 document.getElementById('set-telegram-url').value = data.telegram_channel_url || 'https://t.me/TGShortUrl';
@@ -208,11 +232,26 @@
             }
         }
 
+        window.updateWithdrawalToggleLabel = function() {
+            const enabled = document.getElementById('set-withdrawals-enabled')?.checked !== false;
+            const badge = document.getElementById('withdrawals-toggle-badge');
+            const status = document.getElementById('withdrawals-status-text');
+            if (!badge || !status) return;
+            badge.textContent = enabled ? 'WITHDRAWALS ON' : 'WITHDRAWALS OFF';
+            badge.className = enabled
+                ? 'mt-3 inline-flex rounded-full bg-emerald-900/60 px-3 py-1 text-xs font-bold text-emerald-300'
+                : 'mt-3 inline-flex rounded-full bg-red-900/60 px-3 py-1 text-xs font-bold text-red-300';
+            status.textContent = enabled
+                ? 'Users can submit new withdrawal requests.'
+                : 'New withdrawal requests are disabled until you turn this back on.';
+        };
+
         window.saveSettings = async function() {
             const updates = {
                 cpm: parseFloat(document.getElementById('set-cpm').value),
                 refer_percent: parseInt(document.getElementById('set-ref').value),
                 min_withdraw: parseFloat(document.getElementById('set-min-with').value),
+                withdrawals_enabled: document.getElementById('set-withdrawals-enabled').checked,
                 ad_timer: parseInt(document.getElementById('set-timer').value),
                 ip_restrict_hours: parseInt(document.getElementById('set-ip-hours').value),
                 telegram_channel_url: document.getElementById('set-telegram-url').value.trim() || 'https://t.me/TGShortUrl',
