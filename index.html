@@ -290,31 +290,28 @@ window.addEventListener('unhandledrejection', function(e) {
         
         let isLoginMode = true;
 
-        // Script Injector for SDKs & Banners
+        // Script injector: preserve every SDK attribute (data-zone, data-sdk, etc.).
         function injectHTMLWithScripts(htmlString, containerId) {
-            if(!htmlString) return;
-            const container = document.getElementById(containerId);
-            if(container) {
-                container.innerHTML = htmlString;
-                const scripts = container.getElementsByTagName('script');
-                for (let i = 0; i < scripts.length; i++) {
-                    const script = document.createElement('script');
-                    if (scripts[i].src) script.src = scripts[i].src;
-                    if (scripts[i].async) script.async = scripts[i].async;
-                    if (scripts[i].innerHTML) script.innerHTML = scripts[i].innerHTML;
-                    document.body.appendChild(script);
-                }
-            } else {
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = htmlString;
-                const scripts = tempDiv.getElementsByTagName('script');
-                for (let i = 0; i < scripts.length; i++) {
-                    const script = document.createElement('script');
-                    if (scripts[i].src) script.src = scripts[i].src;
-                    if (scripts[i].async) script.async = scripts[i].async;
-                    if (scripts[i].innerHTML) script.innerHTML = scripts[i].innerHTML;
-                    document.body.appendChild(script);
-                }
+            if (!htmlString) return;
+            const target = containerId ? document.getElementById(containerId) : null;
+            const holder = document.createElement('div');
+            holder.innerHTML = htmlString;
+            if (target) target.innerHTML = holder.innerHTML;
+            Array.from(holder.querySelectorAll('script')).forEach(oldScript => {
+                const script = document.createElement('script');
+                Array.from(oldScript.attributes).forEach(attr => script.setAttribute(attr.name, attr.value));
+                script.textContent = oldScript.textContent;
+                document.body.appendChild(script);
+            });
+        }
+
+        function loadRewardSdk(provider) {
+            if (provider === 'monetag') {
+                const code = adminSettings.monetag_reward_script || "<script src='//libtl.com/sdk.js' data-zone='12122788' data-sdk='show_12122788'><\/script>";
+                injectHTMLWithScripts(code);
+            } else if (provider === 'adsbitvex') {
+                const code = adminSettings.adsbitvex_reward_script || '<script src="https://sdk.adsbitvex.com/functions/v1/ad-script?appid=000540"><\/script>';
+                injectHTMLWithScripts(code);
             }
         }
 
@@ -332,17 +329,13 @@ window.addEventListener('unhandledrejection', function(e) {
             adminSettings = data;
         }
 
-        // Monetag only - temporarily disable AdsBitvex
-        if (
-            adminSettings.active_reward_ad === 'monetag' ||
-            adminSettings.active_reward_ad === 'both'
-        ) {
-            if (adminSettings.monetag_reward_script) {
-                injectHTMLWithScripts(
-                    adminSettings.monetag_reward_script,
-                    null
-                );
-            }
+        // Load enabled providers. Both mode loads both SDKs for Monetag-first fallback.
+        const selectedProvider = adminSettings.active_reward_ad || 'monetag';
+        if (selectedProvider === 'both') {
+            loadRewardSdk('monetag');
+            loadRewardSdk('adsbitvex');
+        } else if (selectedProvider === 'monetag' || selectedProvider === 'adsbitvex') {
+            loadRewardSdk(selectedProvider);
         }
 
     } catch (error) {
@@ -554,39 +547,6 @@ window.addEventListener('unhandledrejection', function(e) {
                 document.getElementById('long-url-input').value = '';
                 this.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i><span>Shorten & Earn</span>'; this.disabled = false;
             });
-            // SHORT LINK COPY BUTTON
-document.getElementById('btn-copy-link').onclick = async function () {
-    const link = document.getElementById('short-link-display').innerText.trim();
-
-    if (!link) return alert('No short link available!');
-
-    try {
-        if (navigator.clipboard && window.isSecureContext) {
-            await navigator.clipboard.writeText(link);
-        } else {
-            const input = document.createElement('textarea');
-            input.value = link;
-            input.style.position = 'fixed';
-            input.style.opacity = '0';
-            document.body.appendChild(input);
-            input.select();
-
-            const copied = document.execCommand('copy');
-            input.remove();
-
-            if (!copied) throw new Error('Copy failed');
-        }
-
-        this.innerHTML = '<i class="fa-solid fa-check"></i>';
-
-        setTimeout(() => {
-            this.innerHTML = '<i class="fa-solid fa-copy"></i>';
-        }, 1500);
-
-    } catch (error) {
-        alert('Unable to copy. Please copy manually.');
-    }
-};
         }
 
         window.submitWithdrawal = async function() {
@@ -668,49 +628,135 @@ document.getElementById('btn-copy-link').onclick = async function () {
             return String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
         }
 
-        // AD REWARD FLOW
+        // AD REWARD FLOW: Monetag first, AdsBitVex fallback. Never unlock on SDK errors.
         function setupAdStep() {
-            document.getElementById('ad-timer-text').classList.remove('hidden');
-            let timeLeft = adminSettings.ad_timer || 5;
-            const btn = document.getElementById('btn-watch-ad'); const timerEl = document.getElementById('ad-timer-text');
-            btn.disabled = true; btn.innerHTML = `Wait ${timeLeft}s...`;
-            
+            const timerEl = document.getElementById('ad-timer-text');
+            const btn = document.getElementById('btn-watch-ad');
+            timerEl.classList.remove('hidden');
+            let timeLeft = Math.max(0, Math.min(300, Number(adminSettings.ad_timer) || 5));
+            btn.disabled = true;
+            btn.innerHTML = `Wait ${timeLeft}s...`;
             const interval = setInterval(() => {
-                timeLeft--; timerEl.innerText = timeLeft; btn.innerHTML = `Wait ${timeLeft}s...`;
-                if (timeLeft <= 0) { clearInterval(interval); btn.disabled = false; btn.className = "w-full primary-gradient text-white font-bold py-4 rounded-xl"; btn.innerHTML = "Click to Watch Ad"; btn.onclick = executeAdClick; timerEl.innerHTML = '<i class="fa-solid fa-play text-indigo-500"></i>'; }
+                timeLeft--;
+                timerEl.innerText = Math.max(0, timeLeft);
+                btn.innerHTML = `Wait ${Math.max(0, timeLeft)}s...`;
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    btn.disabled = false;
+                    btn.className = 'w-full primary-gradient text-white font-bold py-4 rounded-xl';
+                    btn.innerHTML = 'Click to Watch Ad';
+                    btn.onclick = executeAdClick;
+                    timerEl.innerHTML = '<i class="fa-solid fa-play text-indigo-500"></i>';
+                }
             }, 1000);
         }
 
-        function executeAdClick() {
-            const provider = adminSettings.active_reward_ad || 'monetag';
-            const btn = document.getElementById('btn-watch-ad'); btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading Ad...`;
-            
-            try {
-                if (provider === 'monetag' || provider === 'both') {
-                    const funcName = adminSettings.monetag_reward_func || 'show_12122788';
-                    if (typeof window[funcName] === 'function') window[funcName]().then(handleAdSuccess).catch(handleAdSuccess);
-                    else handleAdSuccess();
-                } else if (provider === 'adsbitvex') {
-                    const funcName = adminSettings.adsbitvex_reward_func || 'showadsbitvex';
-                    if (typeof window[funcName] === 'function') window[funcName]().then(handleAdSuccess).catch(handleAdSuccess);
-                    else handleAdSuccess();
-                } else { handleAdSuccess(); }
-            } catch(e) { handleAdSuccess(); }
+        function getAdFunction(provider) {
+            const configured = provider === 'monetag'
+                ? (adminSettings.monetag_reward_func || 'show_12122788')
+                : (adminSettings.adsbitvex_reward_func || 'showadsbitvex');
+            const name = String(configured).replace(/^window\./, '').trim();
+            const fn = window[name];
+            return typeof fn === 'function' ? fn : null;
         }
 
-        async function handleAdSuccess() {
-            document.getElementById('btn-watch-ad').classList.add('hidden'); document.getElementById('ad-timer-container').classList.add('hidden');
-            document.getElementById('ad-step-title').innerText = "Link Unlocked!";
-            const getLinkBtn = document.getElementById('btn-get-link'); getLinkBtn.classList.remove('hidden');
-            
-            let clickerId = tg.initDataUnsafe?.user?.id || 0;
-            try { await fetch(`${VERCEL_API_URL}/reward`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ short_id: window.currentShortId, clicker_tg_id: clickerId }) }); } catch(e){}
+        async function waitForAdFunction(provider, timeoutMs = 8000) {
+            const started = Date.now();
+            while (Date.now() - started < timeoutMs) {
+                const fn = getAdFunction(provider);
+                if (fn) return fn;
+                await new Promise(resolve => setTimeout(resolve, 250));
+            }
+            throw new Error(`${provider} SDK did not become ready.`);
+        }
 
-            const { data } = await dbClient.from('links').select('original_url').eq('short_id', window.currentShortId).single();
-            if(data) getLinkBtn.onclick = () => tg.openLink(data.original_url);
+        async function runRewardProvider(provider) {
+            const fn = await waitForAdFunction(provider);
+            // SDK promise resolve is the provider's client-side completion signal, not cryptographic proof.
+            await Promise.resolve(fn());
+            return provider;
+        }
+
+        async function executeAdClick() {
+            const btn = document.getElementById('btn-watch-ad');
+            if (btn.dataset.busy === '1') return;
+            btn.dataset.busy = '1';
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading Ad...';
+
+            const mode = adminSettings.active_reward_ad || 'monetag';
+            const providers = mode === 'both' ? ['monetag', 'adsbitvex'] : [mode];
+            let completedProvider = null;
+            const errors = [];
+            for (const provider of providers) {
+                try {
+                    completedProvider = await runRewardProvider(provider);
+                    break;
+                } catch (error) {
+                    console.warn(`${provider} rewarded ad failed:`, error);
+                    errors.push(error.message || String(error));
+                }
+            }
+
+            if (!completedProvider) {
+                btn.dataset.busy = '0';
+                btn.disabled = false;
+                btn.innerHTML = 'Try Again';
+                alert('No ads available right now. Please try again later.');
+                return;
+            }
+            await handleAdSuccess(completedProvider);
+        }
+
+        async function handleAdSuccess(provider) {
+            const btn = document.getElementById('btn-watch-ad');
+            const clickerId = tg.initDataUnsafe?.user?.id;
+            if (!tg.initData || !clickerId) {
+                btn.dataset.busy = '0';
+                btn.disabled = false;
+                btn.innerHTML = 'Try Again';
+                alert('Please open TGShortUrl inside Telegram to continue.');
+                return;
+            }
+
+            // Send Telegram's signed initData to backend. The backend validates identity,
+            // self-clicks, duplicate claims and IP limits before applying any earnings.
+            try {
+                const response = await fetch(`${VERCEL_API_URL}/reward`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        short_id: window.currentShortId,
+                        init_data: tg.initData,
+                        ad_provider: provider
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.error || 'Reward request failed.');
+            } catch (error) {
+                console.error('Reward request failed:', error);
+                btn.dataset.busy = '0';
+                btn.disabled = false;
+                btn.innerHTML = 'Try Again';
+                alert(error.message || 'Unable to process this click. Please try again later.');
+                return;
+            }
+
+            document.getElementById('btn-watch-ad').classList.add('hidden');
+            document.getElementById('ad-timer-container').classList.add('hidden');
+            document.getElementById('ad-step-title').innerText = 'Link Unlocked!';
+            const getLinkBtn = document.getElementById('btn-get-link');
+            getLinkBtn.classList.remove('hidden');
+            const { data, error } = await dbClient.from('links').select('original_url').eq('short_id', window.currentShortId).single();
+            if (error || !data?.original_url) {
+                getLinkBtn.classList.add('hidden');
+                alert('Link could not be loaded. Please contact support.');
+                return;
+            }
+            getLinkBtn.onclick = () => tg.openLink(data.original_url);
         }
 
         window.onload = initApp;
     </script>
 </body>
-</html>
+                                                                                                                                                                                                        </html>
