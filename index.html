@@ -272,24 +272,115 @@
         }
 
         async function loadAdminSettings() {
-            const { data } = await dbClient.from('settings').select('*').limit(1).single();
-            if(data) adminSettings = data;
-            
-            // Inject Ad Scripts based on Admin Config
-            if(adminSettings.active_reward_ad === 'monetag' || adminSettings.active_reward_ad === 'both') {
-                if(adminSettings.monetag_reward_script) injectHTMLWithScripts(adminSettings.monetag_reward_script, null);
-            }
-            if(adminSettings.active_reward_ad === 'adsbitvex' || adminSettings.active_reward_ad === 'both') {
-                if(adminSettings.adsbitvex_reward_script) injectHTMLWithScripts(adminSettings.adsbitvex_reward_script, null);
+    try {
+        const { data, error } = await dbClient
+            .from('settings')
+            .select('*')
+            .limit(1)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        if (data) {
+            adminSettings = data;
+        }
+
+        // Monetag only - temporarily disable AdsBitvex
+        if (
+            adminSettings.active_reward_ad === 'monetag' ||
+            adminSettings.active_reward_ad === 'both'
+        ) {
+            if (adminSettings.monetag_reward_script) {
+                injectHTMLWithScripts(
+                    adminSettings.monetag_reward_script,
+                    null
+                );
             }
         }
 
+    } catch (error) {
+        console.error("Settings loading error:", error);
+        adminSettings = {};
+    }
+        }
         async function initApp() {
-            await loadAdminSettings();
-            if (adminSettings.maintenance_mode) {
-                document.getElementById('ui-loading').classList.add('hidden');
-                document.getElementById('ui-maintenance').classList.remove('hidden'); return;
+    const loadingText = document.getElementById('loading-text');
+
+    try {
+        loadingText.innerText = "Connecting to Supabase...";
+
+        await loadAdminSettings();
+
+        if (adminSettings.maintenance_mode) {
+            document.getElementById('ui-loading').classList.add('hidden');
+            document.getElementById('ui-maintenance').classList.remove('hidden');
+            return;
+        }
+
+        loadingText.innerText = "Checking authentication...";
+
+        const { data, error } = await dbClient.auth.getSession();
+
+        if (error) throw error;
+
+        const session = data.session;
+
+        let startParam = tg.initDataUnsafe?.start_param ||
+            new URLSearchParams(window.location.search).get('link');
+
+        if (startParam && startParam.startsWith('link_')) {
+            window.currentShortId = startParam.replace('link_', '');
+
+            document.getElementById('ui-loading').classList.add('hidden');
+            document.getElementById('ui-ad-viewer').classList.remove('hidden');
+
+            setupAdStep();
+            return;
+        }
+
+        if (session) {
+            loadingText.innerText = "Loading user account...";
+
+            const { data: u, error: userError } = await dbClient
+                .from('users')
+                .select('*')
+                .eq('auth_id', session.user.id)
+                .maybeSingle();
+
+            if (userError) throw userError;
+
+            if (!u) {
+                throw new Error("User profile not found in database.");
             }
+
+            if (u.is_blocked) {
+                loadingText.innerText = "Account Blocked";
+                return;
+            }
+
+            currentUserData = u;
+
+            document.getElementById('ui-loading').classList.add('hidden');
+            document.getElementById('ui-main-app').classList.remove('hidden');
+
+            setupDashboard();
+
+        } else {
+            document.getElementById('ui-loading').classList.add('hidden');
+            document.getElementById('ui-auth').classList.remove('hidden');
+        }
+
+    } catch (error) {
+        console.error("APP INITIALIZATION ERROR:", error);
+
+        loadingText.innerText = "Connection Error: " + error.message;
+
+        setTimeout(() => {
+            document.getElementById('ui-loading').classList.add('hidden');
+            document.getElementById('ui-auth').classList.remove('hidden');
+        }, 2000);
+    }
+        }
 
             const { data: { session } } = await dbClient.auth.getSession();
             let startParam = tg.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get('link');
