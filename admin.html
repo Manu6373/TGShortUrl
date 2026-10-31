@@ -12,7 +12,7 @@
         .glass-panel { background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 1rem; }
     </style>
 </head>
-<body class="min-h-screen">
+<body class="flex h-screen overflow-hidden">
 
     <!-- ADMIN LOGIN -->
     <div id="login-screen" class="absolute inset-0 z-50 bg-[#0f172a] flex items-center justify-center">
@@ -26,7 +26,7 @@
     </div>
 
     <!-- ADMIN DASHBOARD -->
-    <div id="admin-dashboard" class="flex w-full min-h-screen hidden">
+    <div id="admin-dashboard" class="flex w-full h-full hidden">
         <aside class="w-64 bg-slate-900 border-r border-slate-800 p-4 hidden md:flex flex-col">
             <h1 class="text-xl font-bold text-indigo-500 mb-8"><i class="fa-solid fa-bolt mr-2"></i>Admin Panel</h1>
             <nav class="space-y-2 flex-1">
@@ -37,12 +37,12 @@
             </nav>
             <button onclick="adminLogout()" class="w-full p-3 text-left text-red-400 hover:bg-slate-800 rounded">Logout</button>
         </aside>
-        <div class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-900 border-t border-slate-700 flex justify-around p-2" id="mobile-nav"><button onclick="switchTab('users',this)" class="nav-btn text-xs p-2">Users</button><button onclick="switchTab('withdrawals',this)" class="nav-btn text-xs p-2">Withdrawals</button><button onclick="switchTab('settings',this)" class="nav-btn text-xs p-2">Settings</button><button onclick="switchTab('broadcast',this)" class="nav-btn text-xs p-2">Broadcast</button><button onclick="adminLogout()" class="text-red-400 text-xs p-2">Logout</button></div><main id="main-content" class="flex-1 p-4 md:p-8 overflow-y-auto bg-[#0f172a] min-w-0"></main>
+        <main id="main-content" class="flex-1 p-8 overflow-y-auto bg-[#0f172a]"></main>
     </div>
 
     <!-- TEMPLATES -->
     <template id="tpl-users">
-        <h2 class="text-2xl font-bold mb-6">User Management</h2><input id="user-search" oninput="filterUsers()" placeholder="Search email / Telegram ID" class="w-full mb-4 bg-slate-900 border border-slate-700 p-3 rounded-lg">
+        <h2 class="text-2xl font-bold mb-6">User Management</h2>
         <div class="glass-panel overflow-x-auto shadow-xl"><table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-slate-900 text-slate-400 border-b border-slate-800"><tr><th class="p-4">Email</th><th class="p-4">TG ID</th><th class="p-4">Balance</th><th class="p-4">Status</th><th class="p-4 text-right">Action</th></tr></thead><tbody id="admin-users-list"></tbody></table></div>
     </template>
     
@@ -53,18 +53,26 @@
 
     <template id="tpl-settings">
         <h2 class="text-2xl font-bold mb-6">App & Advertisement Settings</h2>
-        <div class="glass-panel p-8 shadow-xl grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="glass-panel p-8 shadow-xl grid grid-cols-2 gap-6">
             <!-- General Settings -->
-            <div class="md:col-span-2 md:col-span-1 border-b border-slate-700 pb-4">
+            <div class="col-span-2 md:col-span-1 border-b border-slate-700 pb-4">
                 <h3 class="text-lg font-bold text-indigo-400 mb-4">General Params</h3>
                 <div class="mb-3"><label class="block text-xs font-bold text-slate-400 uppercase">Global CPM ($)</label><input type="number" step="0.01" id="set-cpm" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"></div>
                 <div class="mb-3"><label class="block text-xs font-bold text-slate-400 uppercase">Referral Bonus (%)</label><input type="number" id="set-ref" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"></div>
                 <div class="mb-3"><label class="block text-xs font-bold text-slate-400 uppercase">Min Withdraw ($)</label><input type="number" step="0.5" id="set-min-with" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"></div>
-                <div class="mb-3"><label class="block text-xs font-bold text-slate-400 uppercase">Payment Methods (comma-separated)</label><input id="set-payment" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"></div><div class="mb-3"><label class="flex items-center gap-2"><input id="set-maintenance" type="checkbox"> Maintenance Mode</label></div><div class="mb-3"><label class="block text-xs font-bold text-slate-400 uppercase">IP Restrict (Hours)</label><input type="number" id="set-ip-hours" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white" value="24"></div>
+                <div class="mb-3"><label class="block text-xs font-bold text-slate-400 uppercase">IP Restrict (Hours)</label><input type="number" id="set-ip-hours" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white" value="24"></div>
             </div>
             
+            <!-- Social Links -->
+            <div class="col-span-2 border-b border-slate-700 pb-4">
+                <h3 class="text-lg font-bold text-sky-400 mb-4">Social Links</h3>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Official Telegram Channel URL</label>
+                <input type="url" id="set-telegram-url" class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white" placeholder="https://t.me/TGShortUrl">
+                <p class="text-xs text-slate-500 mt-2">This link appears in the Mini App Profile. Changes take effect after saving; no code edit is needed.</p>
+            </div>
+
             <!-- Ad Settings -->
-            <div class="md:col-span-2 md:col-span-1 border-b border-slate-700 pb-4">
+            <div class="col-span-2 md:col-span-1 border-b border-slate-700 pb-4">
                 <h3 class="text-lg font-bold text-amber-400 mb-4">Ad Provider Config</h3>
                 <div class="mb-3">
                     <label class="block text-xs font-bold text-slate-400 uppercase">Active Rewarded Ad</label>
@@ -78,7 +86,7 @@
             </div>
 
             <!-- Monetag scripts -->
-            <div class="md:col-span-2">
+            <div class="col-span-2">
                 <label class="block text-xs font-bold text-slate-400 uppercase">Monetag Rewarded SDK Code</label>
                 <textarea id="set-mone-script" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"></textarea>
                 <label class="block text-xs font-bold text-slate-400 uppercase mt-2">Monetag Function Name</label>
@@ -86,7 +94,7 @@
             </div>
 
             <!-- AdsBitVex scripts -->
-            <div class="md:col-span-2">
+            <div class="col-span-2">
                 <label class="block text-xs font-bold text-slate-400 uppercase">AdsBitVex Rewarded SDK Code</label>
                 <textarea id="set-abx-script" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"></textarea>
                 <label class="block text-xs font-bold text-slate-400 uppercase mt-2">AdsBitVex Function Name</label>
@@ -94,47 +102,148 @@
             </div>
             
             <!-- Banner Codes -->
-            <div class="md:col-span-2">
+            <div class="col-span-2">
                 <label class="block text-xs font-bold text-slate-400 uppercase">AdsBitVex Banner HTML/JS</label>
                 <textarea id="set-abx-banner" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"></textarea>
             </div>
 
-            <button onclick="saveSettings()" class="md:col-span-2 bg-indigo-600 hover:bg-indigo-500 py-3 rounded-lg font-bold text-white transition">Save All Settings</button>
+            <button onclick="saveSettings()" class="col-span-2 bg-indigo-600 hover:bg-indigo-500 py-3 rounded-lg font-bold text-white transition">Save All Settings</button>
         </div>
     </template>
 
-    <template id="tpl-broadcast"><h2 class="text-2xl font-bold mb-6">Bot Broadcast</h2><div class="glass-panel p-6 max-w-xl space-y-4"><label class="block">Message / Photo Caption</label><textarea id="bc-caption" rows="5" placeholder="Broadcast message (Telegram HTML supported)" class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white"></textarea><label class="block">Image URL (optional)</label><input id="bc-image" type="url" placeholder="https://example.com/image.jpg" class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white"><label class="flex gap-2"><input id="bc-button" type="checkbox" checked> Include Open Mini App button</label><input type="url" id="bc-mini-app-url" value="https://tgshorturl.vercel.app/" class="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white"><button id="bc-send" onclick="sendBroadcast()" class="w-full bg-amber-600 hover:bg-amber-500 py-3 rounded-lg font-bold text-white">Broadcast to All Users</button><div id="bc-result" class="text-sm text-slate-300" aria-live="polite"></div></div></template>
+    <template id="tpl-broadcast">
+        <h2 class="text-2xl font-bold mb-6">Bot Broadcast</h2>
+        <div class="glass-panel p-6 max-w-xl">
+            <textarea id="bc-caption" rows="5" placeholder="Message content..." class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white mb-4"></textarea>
+            <input type="url" id="bc-mini-app-url" value="https://tgshorturl.vercel.app/" class="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white mb-4">
+            <button onclick="sendBroadcast()" class="w-full bg-amber-600 hover:bg-amber-500 py-3 rounded-lg font-bold text-white shadow-lg">Broadcast to All Users</button>
+        </div>
+    </template>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
+    <script>
         const SUPABASE_URL = 'https://nfjgjusfvuatjytfpfhf.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_aPROutC-ZbCxrxsJat8oFQ_2vI-eoaU';
         let dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let settingsId = null;
 
-        async function api(action, payload = {}, method = 'POST') {
-          const {data:{session}} = await dbClient.auth.getSession();
-          if (!session) throw Error('Please log in again.');
-          const r = await fetch('/api/admin', {method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({action,...payload})});
-          const result=await r.json(); if(!r.ok) throw Error(result.error || 'Request failed'); return result;
+        async function checkAdmin() {
+            const { data: { session } } = await dbClient.auth.getSession();
+            if (session) {
+                const { data: u } = await dbClient.from('users').select('is_admin').eq('auth_id', session.user.id).single();
+                if (u && u.is_admin) {
+                    document.getElementById('login-screen').classList.add('hidden');
+                    document.getElementById('admin-dashboard').classList.remove('hidden');
+                    switchTab('users', document.querySelector('.nav-btn'));
+                } else { alert("Not an admin."); dbClient.auth.signOut(); }
+            }
         }
-        async function checkAdmin(){
-          try { await api('check'); document.getElementById('login-screen').classList.add('hidden'); document.getElementById('admin-dashboard').classList.remove('hidden'); switchTab('users',document.querySelector('.nav-btn')); }
-          catch(e){ document.getElementById('login-screen').classList.remove('hidden'); }
+        window.onload = checkAdmin;
+
+        async function adminLogin() {
+            const email = document.getElementById('admin-email').value;
+            const pass = document.getElementById('admin-password').value;
+            const { error } = await dbClient.auth.signInWithPassword({ email: email, password: pass });
+            if (error) alert(error.message); else checkAdmin();
         }
-        window.onload=checkAdmin;
-        async function adminLogin(){const email=document.getElementById('admin-email').value, password=document.getElementById('admin-password').value; const {error}=await dbClient.auth.signInWithPassword({email,password}); if(error) return alert(error.message); try{await api('check');await checkAdmin()}catch(e){alert(e.message);await dbClient.auth.signOut()}}
-        async function adminLogout(){await dbClient.auth.signOut();location.reload()}
-        window.switchTab=function(tab,btn){document.querySelectorAll('.nav-btn').forEach(b=>{b.classList.remove('bg-indigo-600','text-white');b.classList.add('text-slate-400')});if(btn){btn.classList.add('bg-indigo-600','text-white');btn.classList.remove('text-slate-400')}document.getElementById('main-content').innerHTML=document.getElementById(`tpl-${tab}`).innerHTML;if(tab==='users')loadUsers();if(tab==='withdrawals')loadWithdrawals();if(tab==='settings')loadSettings()};
-        const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-        let allUsers=[];
-        async function loadUsers(){try{allUsers=(await api('users')).data;filterUsers()}catch(e){alert(e.message)}}
-        window.filterUsers=function(){const q=(document.getElementById('user-search')?.value||'').toLowerCase();const body=document.getElementById('admin-users-list');if(!body)return;body.innerHTML=allUsers.filter(u=>[u.email,u.telegram_id,u.first_name].some(v=>String(v||'').toLowerCase().includes(q))).map(u=>`<tr class="border-b border-slate-800"><td class="p-4 text-xs">${esc(u.email||'N/A')}</td><td class="p-4 text-xs font-mono text-indigo-400">${esc(u.telegram_id||'N/A')}</td><td class="p-4 text-emerald-400 font-bold">$${Number(u.balance||0).toFixed(2)}</td><td class="p-4">${u.is_blocked?'Blocked':'Active'}</td><td class="p-4 text-right"><button onclick="toggleBlock('${u.id}',${!u.is_blocked})" class="text-amber-500">${u.is_blocked?'Unblock':'Block'}</button></td></tr>`).join('')};
-        window.toggleBlock=async function(id,block){if(!confirm(`${block?'Block':'Unblock'} user?`))return;try{await api('block',{id,block});await loadUsers()}catch(e){alert(e.message)}};
-        async function loadWithdrawals(){try{const rows=(await api('withdrawals')).data;document.getElementById('admin-withdraw-list').innerHTML=rows.map(w=>`<tr class="border-b border-slate-800"><td class="p-4 text-xs">${esc(w.username||w.user_id?.slice(0,8))}</td><td class="p-4 text-xs">${esc(w.method)} - ${esc(w.details)}</td><td class="p-4 text-emerald-400 font-bold">$${Number(w.amount||0).toFixed(2)}</td><td class="p-4 text-center text-xs">${w.status==='pending'?`<button onclick="processW('${w.id}','approved')" class="bg-green-600 p-2 rounded mr-1">Approve</button><button onclick="processW('${w.id}','rejected')" class="bg-red-600 p-2 rounded">Reject</button>`:esc(w.status)}</td></tr>`).join('')}catch(e){alert(e.message)}}
-        window.processW=async function(id,status){if(!confirm(`${status} withdrawal?`))return;try{await api('withdrawal',{id,status});await loadWithdrawals()}catch(e){alert(e.message)}};
-        async function loadSettings(){try{const d=(await api('settings')).data;if(!d)return;settingsId=d.id;const mapping={'set-cpm':d.cpm,'set-ref':d.refer_percent,'set-min-with':d.min_withdraw,'set-timer':d.ad_timer,'set-ip-hours':d.ip_restrict_hours,'set-active-ad':d.active_reward_ad,'set-active-banner':d.active_banner_ad,'set-mone-script':d.monetag_reward_script,'set-mone-func':d.monetag_reward_func,'set-abx-script':d.adsbitvex_reward_script,'set-abx-func':d.adsbitvex_reward_func,'set-abx-banner':d.adsbitvex_banner_code,'set-payment':d.payment_methods};for(const [id,v] of Object.entries(mapping))document.getElementById(id).value=v??'';document.getElementById('set-maintenance').checked=!!d.maintenance_mode}catch(e){alert(e.message)}}
-        window.saveSettings=async function(){const get=id=>document.getElementById(id).value;const data={cpm:Number(get('set-cpm')),refer_percent:Number(get('set-ref')),min_withdraw:Number(get('set-min-with')),ad_timer:Number(get('set-timer')),ip_restrict_hours:Number(get('set-ip-hours')),active_reward_ad:get('set-active-ad'),active_banner_ad:get('set-active-banner'),monetag_reward_script:get('set-mone-script'),monetag_reward_func:get('set-mone-func'),adsbitvex_reward_script:get('set-abx-script'),adsbitvex_reward_func:get('set-abx-func').replace(/^window\./,''),adsbitvex_banner_code:get('set-abx-banner'),payment_methods:get('set-payment'),maintenance_mode:document.getElementById('set-maintenance').checked};try{await api('saveSettings',{data});alert('Settings saved')}catch(e){alert(e.message)}};
-        window.sendBroadcast=async function(){const caption=document.getElementById('bc-caption').value.trim(),image_url=document.getElementById('bc-image').value.trim(),use_button=document.getElementById('bc-button').checked,mini_app_url=document.getElementById('bc-mini-app-url').value.trim();if(!caption&&!image_url)return alert('Enter message or image URL');if(!confirm('Send broadcast to all Telegram users?'))return;const btn=document.getElementById('bc-send'),result=document.getElementById('bc-result');btn.disabled=true;result.textContent='Sending…';try{const r=await api('broadcast',{caption,image_url,use_button,mini_app_url});result.textContent=`Sent: ${r.sent} | Failed: ${r.failed} | Total: ${r.total}${r.note?' — '+r.note:''}`}catch(e){result.textContent='Error: '+e.message}finally{btn.disabled=false}};
+        async function adminLogout() { await dbClient.auth.signOut(); location.reload(); }
+
+        window.switchTab = function(tab, btn) {
+            document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('bg-indigo-600', 'text-white'); b.classList.add('text-slate-400'); });
+            if(btn) { btn.classList.add('bg-indigo-600', 'text-white'); btn.classList.remove('text-slate-400'); }
+            document.getElementById('main-content').innerHTML = document.getElementById(`tpl-${tab}`).innerHTML;
+            if(tab === 'users') loadUsers();
+            if(tab === 'withdrawals') loadWithdrawals();
+            if(tab === 'settings') loadSettings();
+        }
+
+        async function loadUsers() {
+            const { data } = await dbClient.from('users').select('*').order('created_at', { ascending: false });
+            const tbody = document.getElementById('admin-users-list'); tbody.innerHTML = '';
+            data?.forEach(u => tbody.innerHTML += `<tr class="border-b border-slate-800"><td class="p-4 text-xs">${u.email || 'N/A'}</td><td class="p-4 text-xs font-mono text-indigo-400">${u.telegram_id || 'N/A'}</td><td class="p-4 text-emerald-400 font-bold">$${parseFloat(u.balance).toFixed(2)}</td><td class="p-4">${u.is_blocked ? '<span class="text-red-500">Blocked</span>' : '<span class="text-green-500">Active</span>'}</td><td class="p-4 text-right"><button onclick="toggleBlock('${u.id}', ${!u.is_blocked})" class="text-amber-500 mr-2">Toggle Ban</button></td></tr>`);
+        }
+
+        window.toggleBlock = async function(userId, block) {
+            await dbClient.from('users').update({ is_blocked: block }).eq('id', userId); loadUsers();
+        }
+
+        async function loadWithdrawals() {
+            const { data } = await dbClient.from('withdrawals').select('*').order('created_at', { ascending: false });
+            const tbody = document.getElementById('admin-withdraw-list'); tbody.innerHTML = '';
+            data?.forEach(w => {
+                let actionHtml = w.status === 'pending' ? `<button onclick="processW('${w.id}', '${w.user_id}', ${w.amount}, 'approved')" class="bg-green-600 px-2 rounded mr-1">Approve</button><button onclick="processW('${w.id}', '${w.user_id}', ${w.amount}, 'rejected')" class="bg-red-600 px-2 rounded">Reject</button>` : w.status;
+                tbody.innerHTML += `<tr class="border-b border-slate-800"><td class="p-4 text-xs">${w.user_id.substring(0,8)}</td><td class="p-4 text-xs"><b>${w.method}</b> - ${w.details}</td><td class="p-4 text-emerald-400 font-bold">$${w.amount.toFixed(2)}</td><td class="p-4 text-center text-xs">${actionHtml}</td></tr>`;
+            });
+        }
+
+        window.processW = async function(wId, uId, amt, status) {
+            await dbClient.from('withdrawals').update({ status }).eq('id', wId);
+            if(status === 'rejected') {
+                const { data: u } = await dbClient.from('users').select('balance').eq('id', uId).single();
+                if(u) await dbClient.from('users').update({ balance: parseFloat(u.balance) + parseFloat(amt) }).eq('id', uId);
+            }
+            loadWithdrawals();
+        }
+
+        async function loadSettings() {
+            const { data } = await dbClient.from('settings').select('*').limit(1).single();
+            if(data) {
+                settingsId = data.id;
+                document.getElementById('set-cpm').value = data.cpm || 2;
+                document.getElementById('set-ref').value = data.refer_percent || 10;
+                document.getElementById('set-min-with').value = data.min_withdraw || 5;
+                document.getElementById('set-timer').value = data.ad_timer || 5;
+                document.getElementById('set-ip-hours').value = data.ip_restrict_hours || 24;
+                document.getElementById('set-telegram-url').value = data.telegram_channel_url || 'https://t.me/TGShortUrl';
+                
+                document.getElementById('set-active-ad').value = data.active_reward_ad || 'monetag';
+                document.getElementById('set-active-banner').value = data.active_banner_ad || 'none';
+                
+                document.getElementById('set-mone-script').value = data.monetag_reward_script || "<script src='//libtl.com/sdk.js' data-zone='12122788' data-sdk='show_12122788'><\/script>";
+                document.getElementById('set-mone-func').value = data.monetag_reward_func || 'show_12122788';
+                
+                document.getElementById('set-abx-script').value = data.adsbitvex_reward_script || '<script src="https://sdk.adsbitvex.com/functions/v1/ad-script?appid=000540"><\/script>'; 
+                document.getElementById('set-abx-func').value = data.adsbitvex_reward_func || 'showadsbitvex';
+                
+                document.getElementById('set-abx-banner').value = data.adsbitvex_banner_code || '';
+            }
+        }
+
+        window.saveSettings = async function() {
+            const updates = {
+                cpm: parseFloat(document.getElementById('set-cpm').value),
+                refer_percent: parseInt(document.getElementById('set-ref').value),
+                min_withdraw: parseFloat(document.getElementById('set-min-with').value),
+                ad_timer: parseInt(document.getElementById('set-timer').value),
+                ip_restrict_hours: parseInt(document.getElementById('set-ip-hours').value),
+                telegram_channel_url: document.getElementById('set-telegram-url').value.trim() || 'https://t.me/TGShortUrl',
+                active_reward_ad: document.getElementById('set-active-ad').value,
+                active_banner_ad: document.getElementById('set-active-banner').value,
+                monetag_reward_script: document.getElementById('set-mone-script').value,
+                monetag_reward_func: document.getElementById('set-mone-func').value,
+                adsbitvex_reward_script: document.getElementById('set-abx-script').value,
+                adsbitvex_reward_func: document.getElementById('set-abx-func').value,
+                adsbitvex_banner_code: document.getElementById('set-abx-banner').value
+            };
+            const telegramUrl = updates.telegram_channel_url;
+            if (!/^https:\/\/t\.me\/[A-Za-z0-9_+\/-]+$/.test(telegramUrl)) return alert('Enter a valid Telegram channel URL (https://t.me/...).');
+            const result = settingsId
+                ? await dbClient.from('settings').update(updates).eq('id', settingsId)
+                : await dbClient.from('settings').insert([updates]);
+            if (result.error) return alert('Settings save failed: ' + result.error.message);
+            alert("Settings Saved Successfully!");
+        }
+
+        window.sendBroadcast = async function() {
+            const caption = document.getElementById('bc-caption').value;
+            const url = document.getElementById('bc-mini-app-url').value;
+            if(!caption) return alert("Enter message!");
+            try {
+                const { data: users } = await dbClient.from('users').select('telegram_id').not('telegram_id', 'is', null);
+                const chatIds = users.map(u => u.telegram_id);
+                await fetch('/api/broadcast', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_ids: chatIds, caption: caption, mini_app_url: url }) });
+                alert("Broadcast sent via Vercel backend!");
+            } catch(e) { alert(e.message); }
+        }
     </script>
 </body>
 </html>
