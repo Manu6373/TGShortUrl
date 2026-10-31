@@ -228,18 +228,6 @@
 
     <script>
         // API CONFIGURATION
-        // DEBUG ERROR DETECTION
-window.addEventListener('error', function(e) {
-    console.error("JavaScript Error:", e.message);
-    document.getElementById('loading-text').innerText =
-        "JS Error: " + e.message;
-});
-
-window.addEventListener('unhandledrejection', function(e) {
-    console.error("Promise Error:", e.reason);
-    document.getElementById('loading-text').innerText =
-        "Connection Error: " + (e.reason?.message || e.reason);
-});
         const SUPABASE_URL = 'https://nfjgjusfvuatjytfpfhf.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_aPROutC-ZbCxrxsJat8oFQ_2vI-eoaU';
         const VERCEL_API_URL = '/api'; 
@@ -247,29 +235,6 @@ window.addEventListener('unhandledrejection', function(e) {
         const APP_SHORT_NAME = 'tgshorturlvercel'; 
 
         let dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        // SUPABASE CONNECTION TEST
-(async function() {
-    try {
-        console.log("Testing Supabase connection...");
-
-        const { data, error } = await dbClient
-            .from('settings')
-            .select('*')
-            .limit(1);
-
-        if (error) throw error;
-
-        console.log("SUPABASE CONNECTION SUCCESS:", data);
-        document.getElementById('loading-text').innerText =
-            "Supabase Connected Successfully!";
-
-    } catch (error) {
-        console.error("SUPABASE CONNECTION FAILED:", error);
-
-        document.getElementById('loading-text').innerText =
-            "Supabase Error: " + error.message;
-    }
-})();
         let currentUserData = null;
         let adminSettings = {};
         
@@ -514,6 +479,34 @@ window.addEventListener('unhandledrejection', function(e) {
                 document.getElementById('long-url-input').value = '';
                 this.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i><span>Shorten & Earn</span>'; this.disabled = false;
             });
+            // COPY SHORT LINK
+document.getElementById('btn-copy-link').addEventListener('click', async function() {
+    const text = document.getElementById('short-link-display').innerText.trim();
+
+    if (!text) {
+        alert("No link available!");
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(text);
+        alert("Link copied successfully!");
+    } catch (error) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+
+        const copied = document.execCommand('copy');
+        textarea.remove();
+
+        if (copied) {
+            alert("Link copied successfully!");
+        } else {
+            alert("Copy failed. Please copy manually.");
+        }
+    }
+});
         }
 
         window.submitWithdrawal = async function() {
