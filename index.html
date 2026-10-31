@@ -554,6 +554,39 @@ window.addEventListener('unhandledrejection', function(e) {
                 document.getElementById('long-url-input').value = '';
                 this.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i><span>Shorten & Earn</span>'; this.disabled = false;
             });
+            // SHORT LINK COPY BUTTON
+document.getElementById('btn-copy-link').onclick = async function () {
+    const link = document.getElementById('short-link-display').innerText.trim();
+
+    if (!link) return alert('No short link available!');
+
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(link);
+        } else {
+            const input = document.createElement('textarea');
+            input.value = link;
+            input.style.position = 'fixed';
+            input.style.opacity = '0';
+            document.body.appendChild(input);
+            input.select();
+
+            const copied = document.execCommand('copy');
+            input.remove();
+
+            if (!copied) throw new Error('Copy failed');
+        }
+
+        this.innerHTML = '<i class="fa-solid fa-check"></i>';
+
+        setTimeout(() => {
+            this.innerHTML = '<i class="fa-solid fa-copy"></i>';
+        }, 1500);
+
+    } catch (error) {
+        alert('Unable to copy. Please copy manually.');
+    }
+};
         }
 
         window.submitWithdrawal = async function() {
