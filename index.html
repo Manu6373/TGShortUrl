@@ -252,7 +252,7 @@ window.addEventListener('unhandledrejection', function(e) {
     document.getElementById('loading-text').innerText =
         "Connection Error: " + (e.reason?.message || e.reason);
 });
-        const SUPABASE_URL = 'https://nfjgjusfvuatjytfpfhf.supabase.co'; 
+        const SUPABASE_URL = 'https://nfjgjusfvuatjytpfhf.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_aPROutC-ZbCxrxsJat8oFQ_2vI-eoaU';
         const VERCEL_API_URL = '/api'; 
         const BOT_USERNAME = 'TGShortUrlBot'; 
@@ -523,6 +523,13 @@ window.addEventListener('unhandledrejection', function(e) {
             document.getElementById('stat-today-earn').innerText = `$${parseFloat(u.today_earnings || 0).toFixed(4)}`;
             document.getElementById('stat-today-views').innerText = u.today_clicks || 0;
             document.getElementById('stat-avg-cpm').innerText = `$${parseFloat(adminSettings.cpm || 0).toFixed(4)}`;
+
+            // Apply live Admin Panel values to the Mini App UI.
+            const minimumWithdrawal = Number(adminSettings.min_withdraw ?? 5);
+            const referralPercent = Number(adminSettings.refer_percent ?? 10);
+            document.getElementById('min-withdraw-display').innerText = `$${minimumWithdrawal.toFixed(2)}`;
+            document.getElementById('refer-commission').innerText = `${referralPercent}%`;
+            document.getElementById('withdraw-amount').min = String(minimumWithdrawal);
             loadPersonalMonthlyStats();
             
             const methods = (adminSettings.payment_methods || "UPI").split(',');
@@ -550,7 +557,19 @@ window.addEventListener('unhandledrejection', function(e) {
         }
 
         window.submitWithdrawal = async function() {
-            const { data: latestSettings } = await dbClient.from('settings').select('withdrawals_enabled').limit(1).maybeSingle();
+            const { data: latestSettings, error: settingsError } = await dbClient
+                .from('settings')
+                .select('min_withdraw,withdrawals_enabled')
+                .limit(1)
+                .maybeSingle();
+            if (settingsError) return alert('Unable to verify withdrawal settings. Please try again.');
+            if (latestSettings) {
+                adminSettings.min_withdraw = latestSettings.min_withdraw;
+                adminSettings.withdrawals_enabled = latestSettings.withdrawals_enabled;
+                const latestMinimum = Number(latestSettings.min_withdraw ?? 5);
+                document.getElementById('min-withdraw-display').innerText = `$${latestMinimum.toFixed(2)}`;
+                document.getElementById('withdraw-amount').min = String(latestMinimum);
+            }
             if (latestSettings?.withdrawals_enabled === false) return alert('Withdrawals are temporarily unavailable. Please try again later.');
             const method = document.getElementById('withdraw-method').value;
             const details = document.getElementById('withdraw-details').value.trim();
