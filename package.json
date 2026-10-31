@@ -1,19 +1,24 @@
 {
-  "name": "teleshort-api",
+  "name": "tgshorturl",
   "version": "1.0.0",
-  "description": "Backend API for TeleShort Mini App",
-  "main": "index.js",
+  "description": "Telegram Mini App URL Shortener with Rewarded & Banner Ads",
   "type": "module",
   "scripts": {
-    "start": "node api/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vercel dev"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0"
+    "@supabase/supabase-js": "^2.39.3"
   },
   "engines": {
     "node": ">=18.x"
   },
-  "author": "WebApp Sikho",
+  "keywords": [
+    "telegram",
+    "mini-app",
+    "url-shortener",
+    "monetag",
+    "adsbitvex"
+  ],
+  "author": "TGShortUrl Admin",
   "license": "ISC"
 }
