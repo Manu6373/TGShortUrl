@@ -247,6 +247,29 @@ window.addEventListener('unhandledrejection', function(e) {
         const APP_SHORT_NAME = 'tgshorturlvercel'; 
 
         let dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // SUPABASE CONNECTION TEST
+(async function() {
+    try {
+        console.log("Testing Supabase connection...");
+
+        const { data, error } = await dbClient
+            .from('settings')
+            .select('*')
+            .limit(1);
+
+        if (error) throw error;
+
+        console.log("SUPABASE CONNECTION SUCCESS:", data);
+        document.getElementById('loading-text').innerText =
+            "Supabase Connected Successfully!";
+
+    } catch (error) {
+        console.error("SUPABASE CONNECTION FAILED:", error);
+
+        document.getElementById('loading-text').innerText =
+            "Supabase Error: " + error.message;
+    }
+})();
         let currentUserData = null;
         let adminSettings = {};
         
