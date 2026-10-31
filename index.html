@@ -143,6 +143,11 @@
                         <button id="btn-copy-referral" class="primary-gradient text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-lg">Copy</button>
                     </div>
                 </div>
+                <div class="grid grid-cols-2 gap-4 mb-5">
+                    <div class="glass-panel p-5 text-center"><div class="text-slate-400 text-xs font-bold uppercase mb-2">Total Referrals</div><div id="ref-total-count" class="text-3xl font-bold text-white">0</div></div>
+                    <div class="glass-panel p-5 text-center border border-emerald-500/20"><div class="text-emerald-400 text-xs font-bold uppercase mb-2">Total Earned</div><div id="ref-total-earned" class="text-3xl font-bold text-emerald-400">$0.00</div></div>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-3"><i class="fa-solid fa-list-check text-indigo-400 mr-2"></i>Referrals List</h3>
                 <div id="referrals-list" class="space-y-3"></div>
             </div>
 
@@ -163,6 +168,7 @@
                     <div class="mb-6"><input type="number" step="0.01" id="withdraw-amount" placeholder="Amount ($)" class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-3 text-sm"></div>
                     <button onclick="submitWithdrawal()" class="w-full success-gradient text-white font-bold py-4 rounded-xl shadow-lg">Submit Request</button>
                 </div>
+                <h3 class="text-lg font-bold text-white mb-3"><i class="fa-solid fa-clock-rotate-left text-indigo-400 mr-2"></i>Payout History</h3>
                 <div id="withdrawal-history-list" class="space-y-3"></div>
             </div>
 
@@ -173,6 +179,13 @@
                     <h2 id="profile-name" class="text-2xl font-bold text-white">User</h2>
                     <p id="profile-id" class="text-xs text-indigo-300 font-mono mt-2">ID: ...</p>
                     <button onclick="handleLogout()" class="mt-4 bg-red-600/20 text-red-400 border border-red-500/30 px-6 py-2 rounded-lg font-bold text-sm hover:bg-red-600/40 transition">Logout</button>
+                </div>
+                <div class="glass-panel p-6 mb-4 shadow-lg">
+                    <h3 class="text-xs font-bold text-slate-400 pb-3 uppercase tracking-wider">Social Links</h3>
+                    <a id="profile-telegram-link" href="https://t.me/TGShortUrl" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between p-3 rounded-xl hover:bg-slate-800/50">
+                        <span class="flex items-center"><i class="fa-brands fa-telegram text-sky-400 text-2xl w-8"></i><span class="text-sm text-slate-200 ml-3">Official Telegram Channel</span></span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-slate-500"></i>
+                    </a>
                 </div>
                 <div class="glass-panel p-2 mb-4 shadow-lg" id="links-container">
                     <h3 class="text-xs font-bold text-slate-400 px-4 pt-4 pb-2 uppercase tracking-wider">Legal</h3>
@@ -508,7 +521,9 @@ window.addEventListener('unhandledrejection', function(e) {
             const u = currentUserData;
             document.getElementById('user-greeting').innerText = `Hello, ${u.first_name}!`;
             document.getElementById('profile-name').innerText = u.first_name;
-            document.getElementById('profile-id').innerText = `Email: ${u.email}`;
+            document.getElementById('profile-id').innerText = `ID: ${u.telegram_id || 'N/A'}`;
+            const telegramLink = adminSettings.telegram_channel_url || 'https://t.me/TGShortUrl';
+            document.getElementById('profile-telegram-link').href = telegramLink;
             document.getElementById('referral-link-display').innerText = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=ref_${u.telegram_id}`;
             document.getElementById('header-balance').innerText = `$${parseFloat(u.balance || 0).toFixed(2)}`;
             document.getElementById('wallet-balance-page').innerText = `$${parseFloat(u.balance || 0).toFixed(2)}`;
@@ -525,6 +540,8 @@ window.addEventListener('unhandledrejection', function(e) {
             methods.forEach(m => sel.innerHTML += `<option value="${m.trim()}">${m.trim()}</option>`);
 
             document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', function() { switchPage(this.getAttribute('data-target')); }));
+            const copyReferralBtn = document.getElementById('btn-copy-referral');
+            if (copyReferralBtn) copyReferralBtn.onclick = copyReferralLink;
             
             document.getElementById('btn-shorten').addEventListener('click', async function() {
                 const url = document.getElementById('long-url-input').value.trim();
@@ -569,11 +586,53 @@ window.addEventListener('unhandledrejection', function(e) {
         async function loadWithdrawalHistory() {
             const { data } = await dbClient.from('withdrawals').select('*').eq('user_id', currentUserData.id).order('created_at', { ascending: false });
             const list = document.getElementById('withdrawal-history-list'); list.innerHTML = '';
-            data?.forEach(w => list.innerHTML += `<div class="glass-panel p-4 flex justify-between mb-2"><div><div class="text-sm font-bold text-white">${w.method}</div><div class="text-[10px] text-slate-400">${new Date(w.created_at).toLocaleDateString()}</div></div><div class="text-right text-sm font-bold text-white">$${w.amount.toFixed(2)}<br><span class="text-[10px] text-amber-400 uppercase">${w.status}</span></div></div>`);
+            if (!data || !data.length) { list.innerHTML = '<div class="glass-panel p-6 text-center text-slate-400">No transactions yet.</div>'; return; }
+            data.forEach(w => {
+                const statusClass = w.status === 'approved' ? 'text-emerald-400' : (w.status === 'rejected' ? 'text-rose-400' : 'text-amber-400');
+                list.innerHTML += `<div class="glass-panel p-4 flex justify-between items-center mb-2"><div><div class="text-sm font-bold text-white">${escapeHtml(w.method || 'Payout')}</div><div class="text-xs text-slate-400">${new Date(w.created_at).toLocaleDateString()}</div></div><div class="text-right text-sm font-bold text-white">$${Number(w.amount || 0).toFixed(2)}<br><span class="text-[10px] uppercase ${statusClass}">${escapeHtml(w.status || 'pending')}</span></div></div>`;
+            });
         }
+        async function copyReferralLink() {
+            const link = document.getElementById('referral-link-display').innerText.trim();
+            if (!link || link === 'Generating...') return alert('Referral link is not ready yet.');
+            try {
+                if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(link);
+                else {
+                    const input = document.createElement('textarea'); input.value = link;
+                    input.style.position = 'fixed'; input.style.opacity = '0'; document.body.appendChild(input);
+                    input.focus(); input.select();
+                    const copied = document.execCommand('copy'); input.remove();
+                    if (!copied) throw new Error('Copy not supported');
+                }
+                const btn = document.getElementById('btn-copy-referral');
+                if (btn) { const old = btn.innerText; btn.innerText = 'Copied!'; setTimeout(() => btn.innerText = old, 1500); }
+            } catch (error) { alert('Unable to copy automatically. Please copy the referral link manually.'); }
+        }
+
         async function fetchReferralDetails() {
-            const { data } = await dbClient.from('referrals').select('*').eq('referrer_tg_id', currentUserData.telegram_id);
-            document.getElementById('referrals-list').innerHTML = data && data.length ? `<div class="glass-panel p-4 text-center text-sm font-bold text-emerald-400">${data.length} Total Referrals</div>` : '<div class="glass-panel p-4 text-center text-slate-400">No referrals yet.</div>';
+            const list = document.getElementById('referrals-list');
+            list.innerHTML = '<div class="glass-panel p-4 text-center text-slate-400">Loading referrals...</div>';
+            const { data: referrals, error } = await dbClient.from('referrals').select('referred_tg_id').eq('referrer_tg_id', currentUserData.telegram_id);
+            if (error) { list.innerHTML = '<div class="glass-panel p-4 text-center text-rose-400">Unable to load referrals.</div>'; return; }
+            const ids = [...new Set((referrals || []).map(r => r.referred_tg_id).filter(Boolean))];
+            document.getElementById('ref-total-count').innerText = ids.length;
+            const { data: earnedLogs } = await dbClient.from('earning_logs').select('amount').eq('user_id', currentUserData.id).eq('earning_type', 'referral');
+            const totalEarned = (earnedLogs || []).reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+            document.getElementById('ref-total-earned').innerText = `$${totalEarned.toFixed(2)}`;
+            if (!ids.length) { list.innerHTML = '<div class="glass-panel p-6 text-center text-slate-400">You have not referred anyone yet.</div>'; return; }
+            const { data: users, error: usersError } = await dbClient.from('users').select('telegram_id,first_name,username').in('telegram_id', ids);
+            if (usersError) { list.innerHTML = '<div class="glass-panel p-4 text-center text-rose-400">Unable to load referral names.</div>'; return; }
+            const byId = new Map((users || []).map(u => [String(u.telegram_id), u]));
+            list.innerHTML = ids.map(id => {
+                const user = byId.get(String(id));
+                const name = user?.first_name || 'Telegram User';
+                const username = user?.username ? '@' + user.username.replace(/^@/, '') : `ID: ${id}`;
+                return `<div class="glass-panel p-4 flex items-center justify-between"><div class="min-w-0"><div class="font-bold text-white truncate">${escapeHtml(name)}</div><div class="text-xs text-slate-400">${escapeHtml(username)}</div></div><i class="fa-solid fa-user-check text-emerald-400"></i></div>`;
+            }).join('');
+        }
+
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
         }
 
         // AD REWARD FLOW
@@ -621,4 +680,4 @@ window.addEventListener('unhandledrejection', function(e) {
         window.onload = initApp;
     </script>
 </body>
-    </html>
+</html>
