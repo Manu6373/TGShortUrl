@@ -3,514 +3,233 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TeleShort - Advanced Admin Panel</title>
+    <title>TGShortUrl - Admin Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        body { background-color: #0f172a; color: #f8fafc; }
         .glass-panel { background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 1rem; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 10px; }
-        .tg-bubble { background-color: #182533; border-radius: 12px 12px 12px 2px; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden">
 
-    <!-- LOGIN SCREEN -->
+    <!-- ADMIN LOGIN -->
     <div id="login-screen" class="absolute inset-0 z-50 bg-[#0f172a] flex items-center justify-center">
         <div class="glass-panel p-8 max-w-sm w-full text-center shadow-2xl">
-            <div class="w-16 h-16 mx-auto bg-indigo-500/20 rounded-xl flex items-center justify-center mb-6">
-                <i class="fa-solid fa-shield-halved text-3xl text-indigo-500"></i>
-            </div>
-            <h2 class="text-2xl font-bold mb-6">Admin Secure Login</h2>
-            <input type="password" id="admin-password" placeholder="Enter Password" class="w-full bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-lg mb-4 focus:outline-none focus:border-indigo-500 text-center tracking-widest">
-            <button id="btn-login" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg">Login</button>
+            <h2 class="text-2xl font-bold mb-2">TGShortUrl Admin</h2>
+            <p class="text-sm text-slate-400 mb-6">Server-side Authenticated Access</p>
+            <input type="email" id="admin-email" placeholder="Admin Email" class="w-full bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-lg mb-4">
+            <input type="password" id="admin-password" placeholder="Admin Password" class="w-full bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-lg mb-4">
+            <button onclick="adminLogin()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg">Login Securely</button>
         </div>
     </div>
 
     <!-- ADMIN DASHBOARD -->
     <div id="admin-dashboard" class="flex w-full h-full hidden">
-        <!-- Desktop Sidebar -->
         <aside class="w-64 bg-slate-900 border-r border-slate-800 p-4 hidden md:flex flex-col">
-            <h1 class="text-xl font-bold text-indigo-500 mb-8 px-2"><i class="fa-solid fa-bolt mr-2"></i>TeleAdmin</h1>
+            <h1 class="text-xl font-bold text-indigo-500 mb-8"><i class="fa-solid fa-bolt mr-2"></i>Admin Panel</h1>
             <nav class="space-y-2 flex-1">
-                <button class="nav-btn w-full text-left p-3 rounded bg-indigo-600 text-white transition" onclick="switchTab('dashboard', this)"><i class="fa-solid fa-chart-pie mr-2 w-5 text-center"></i> Dashboard</button>
-                <button class="nav-btn w-full text-left p-3 rounded hover:bg-slate-800 text-slate-400 transition" onclick="switchTab('users', this)"><i class="fa-solid fa-users mr-2 w-5 text-center"></i> Users List</button>
-                <button class="nav-btn w-full text-left p-3 rounded hover:bg-slate-800 text-slate-400 transition" onclick="switchTab('withdrawals', this)"><i class="fa-solid fa-money-bill-transfer mr-2 w-5 text-center"></i> Withdrawals</button>
-                <button class="nav-btn w-full text-left p-3 rounded hover:bg-slate-800 text-slate-400 transition" onclick="switchTab('settings', this)"><i class="fa-solid fa-gear mr-2 w-5 text-center"></i> App Settings</button>
-                <button class="nav-btn w-full text-left p-3 rounded hover:bg-slate-800 text-slate-400 transition" onclick="switchTab('broadcast', this)"><i class="fa-solid fa-bullhorn mr-2 w-5 text-center text-amber-400"></i> Broadcast</button>
+                <button class="nav-btn w-full text-left p-3 rounded bg-indigo-600 text-white" onclick="switchTab('users', this)">Users</button>
+                <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('withdrawals', this)">Withdrawals</button>
+                <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('settings', this)">Settings & Ads</button>
+                <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('broadcast', this)">Broadcast</button>
             </nav>
-            <button class="w-full text-left p-3 rounded hover:bg-red-900/50 text-slate-400 hover:text-red-400 transition border border-transparent hover:border-red-900" onclick="location.reload()"><i class="fa-solid fa-power-off mr-2 w-5 text-center"></i> Logout</button>
+            <button onclick="adminLogout()" class="w-full p-3 text-left text-red-400 hover:bg-slate-800 rounded">Logout</button>
         </aside>
-
-        <!-- Mobile Header & Main -->
-        <div class="md:hidden flex flex-col w-full h-full">
-            <header class="flex justify-between items-center bg-slate-900 p-4 border-b border-slate-800">
-                <span class="font-bold text-indigo-400"><i class="fa-solid fa-bolt mr-2"></i>TeleAdmin</span>
-                <div class="flex space-x-2 text-sm overflow-x-auto whitespace-nowrap pb-1">
-                    <button class="nav-btn bg-indigo-600 px-3 py-1 rounded text-white" onclick="switchTab('dashboard', this)">Dash</button>
-                    <button class="nav-btn text-slate-400 px-3 py-1" onclick="switchTab('users', this)">Users</button>
-                    <button class="nav-btn text-slate-400 px-3 py-1" onclick="switchTab('withdrawals', this)">Payouts</button>
-                    <button class="nav-btn text-slate-400 px-3 py-1" onclick="switchTab('settings', this)">Settings</button>
-                    <button class="nav-btn text-slate-400 px-3 py-1" onclick="switchTab('broadcast', this)">Broadcast</button>
-                </div>
-            </header>
-            <main id="mobile-main" class="flex-1 overflow-y-auto p-4"></main>
-        </div>
-
-        <!-- Desktop Main -->
-        <main id="desktop-main" class="hidden md:block flex-1 p-8 overflow-y-auto bg-[#0f172a]"></main>
+        <main id="main-content" class="flex-1 p-8 overflow-y-auto bg-[#0f172a]"></main>
     </div>
 
-    <!-- ============================================== -->
-    <!-- TEMPLATES FOR TABS                             -->
-    <!-- ============================================== -->
-
-    <!-- TAB: DASHBOARD -->
-    <template id="tpl-dashboard">
-        <h2 class="text-2xl font-bold mb-6">Real-Time Overview</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            <div class="glass-panel p-6 border-l-4 border-l-indigo-500 shadow-lg flex justify-between items-center">
-                <div><div class="text-slate-400 text-xs font-bold uppercase mb-1">Total Users</div><div class="text-3xl font-bold text-white" id="stat-total-users">0</div></div>
-                <div class="bg-indigo-500/20 p-3 rounded-lg"><i class="fa-solid fa-users text-indigo-400 text-xl"></i></div>
-            </div>
-            <div class="glass-panel p-6 border-l-4 border-l-emerald-500 shadow-lg flex justify-between items-center">
-                <div><div class="text-slate-400 text-xs font-bold uppercase mb-1">Active Today</div><div class="text-3xl font-bold text-white" id="stat-active-users">0</div></div>
-                <div class="bg-emerald-500/20 p-3 rounded-lg"><i class="fa-solid fa-bolt text-emerald-400 text-xl"></i></div>
-            </div>
-            <div class="glass-panel p-6 border-l-4 border-l-red-500 shadow-lg flex justify-between items-center">
-                <div><div class="text-slate-400 text-xs font-bold uppercase mb-1">Blocked Users</div><div class="text-3xl font-bold text-red-400" id="stat-blocked">0</div></div>
-                <div class="bg-red-500/20 p-3 rounded-lg"><i class="fa-solid fa-ban text-red-400 text-xl"></i></div>
-            </div>
-            <div class="glass-panel p-6 border-l-4 border-l-green-500 shadow-lg flex justify-between items-center">
-                <div><div class="text-slate-400 text-xs font-bold uppercase mb-1">Total Paid</div><div class="text-3xl font-bold text-green-400" id="stat-paid">$0.00</div></div>
-                <div class="bg-green-500/20 p-3 rounded-lg"><i class="fa-solid fa-check-double text-green-400 text-xl"></i></div>
-            </div>
-            <div class="glass-panel p-6 border-l-4 border-l-amber-500 shadow-lg flex justify-between items-center">
-                <div><div class="text-slate-400 text-xs font-bold uppercase mb-1">Pending Payouts</div><div class="text-3xl font-bold text-amber-400" id="stat-pending-amt">$0.00</div></div>
-                <div class="bg-amber-500/20 p-3 rounded-lg"><i class="fa-solid fa-clock text-amber-400 text-xl"></i></div>
-            </div>
-        </div>
-    </template>
-
-    <!-- TAB: USERS -->
+    <!-- TEMPLATES -->
     <template id="tpl-users">
         <h2 class="text-2xl font-bold mb-6">User Management</h2>
-        <div class="glass-panel overflow-x-auto shadow-xl">
-            <table class="w-full text-left text-sm whitespace-nowrap">
-                <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
-                    <tr>
-                        <th class="p-4">TG ID</th>
-                        <th class="p-4">Name</th>
-                        <th class="p-4">Balance</th>
-                        <th class="p-4">Status</th>
-                        <th class="p-4 text-right">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="admin-users-list" class="divide-y divide-slate-800">
-                    <tr><td colspan="5" class="p-8 text-center text-slate-400"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading...</td></tr>
-                </tbody>
-            </table>
-        </div>
+        <div class="glass-panel overflow-x-auto shadow-xl"><table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-slate-900 text-slate-400 border-b border-slate-800"><tr><th class="p-4">Email</th><th class="p-4">TG ID</th><th class="p-4">Balance</th><th class="p-4">Status</th><th class="p-4 text-right">Action</th></tr></thead><tbody id="admin-users-list"></tbody></table></div>
     </template>
-
-    <!-- TAB: WITHDRAWALS -->
+    
     <template id="tpl-withdrawals">
         <h2 class="text-2xl font-bold mb-6">Withdrawal Requests</h2>
-        <div class="glass-panel overflow-x-auto shadow-xl">
-            <table class="w-full text-left text-sm whitespace-nowrap">
-                <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
-                    <tr>
-                        <th class="p-4">User</th>
-                        <th class="p-4">Method & Details</th>
-                        <th class="p-4">Amount</th>
-                        <th class="p-4">Date</th>
-                        <th class="p-4 text-center">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="admin-withdraw-list" class="divide-y divide-slate-800">
-                    <tr><td colspan="5" class="p-8 text-center text-slate-400"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading...</td></tr>
-                </tbody>
-            </table>
-        </div>
+        <div class="glass-panel overflow-x-auto shadow-xl"><table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-slate-900 text-slate-400 border-b border-slate-800"><tr><th class="p-4">User</th><th class="p-4">Method & Details</th><th class="p-4">Amount</th><th class="p-4 text-center">Action</th></tr></thead><tbody id="admin-withdraw-list"></tbody></table></div>
     </template>
 
-    <!-- TAB: SETTINGS -->
     <template id="tpl-settings">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold">App Settings & Customization</h2>
-            <!-- MAINTENANCE TOGGLE -->
-            <label class="flex items-center space-x-2 cursor-pointer bg-slate-900 px-4 py-2 rounded-lg border border-slate-700">
-                <span class="text-sm font-bold text-slate-300">Maintenance Mode</span>
-                <input type="checkbox" id="set-maintenance" class="w-5 h-5 accent-red-500">
-            </label>
-        </div>
-
-        <div class="glass-panel p-8 max-w-4xl shadow-xl">
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div><label class="block text-xs font-bold text-slate-400 mb-2 uppercase">Global CPM ($)</label><input type="number" step="0.01" id="set-cpm" class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white focus:border-indigo-500 outline-none"></div>
-                <div><label class="block text-xs font-bold text-slate-400 mb-2 uppercase">Referral Bonus (%)</label><input type="number" id="set-ref" class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white focus:border-indigo-500 outline-none"></div>
-                <div><label class="block text-xs font-bold text-slate-400 mb-2 uppercase">Min. Withdraw ($)</label><input type="number" step="0.5" id="set-min-with" class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white focus:border-indigo-500 outline-none"></div>
+        <h2 class="text-2xl font-bold mb-6">App & Advertisement Settings</h2>
+        <div class="glass-panel p-8 shadow-xl grid grid-cols-2 gap-6">
+            <!-- General Settings -->
+            <div class="col-span-2 md:col-span-1 border-b border-slate-700 pb-4">
+                <h3 class="text-lg font-bold text-indigo-400 mb-4">General Params</h3>
+                <div class="mb-3"><label class="block text-xs font-bold text-slate-400 uppercase">Global CPM ($)</label><input type="number" step="0.01" id="set-cpm" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"></div>
+                <div class="mb-3"><label class="block text-xs font-bold text-slate-400 uppercase">Referral Bonus (%)</label><input type="number" id="set-ref" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"></div>
+                <div class="mb-3"><label class="block text-xs font-bold text-slate-400 uppercase">Min Withdraw ($)</label><input type="number" step="0.5" id="set-min-with" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"></div>
+                <div class="mb-3"><label class="block text-xs font-bold text-slate-400 uppercase">IP Restrict (Hours)</label><input type="number" id="set-ip-hours" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white" value="24"></div>
             </div>
             
-            <div class="border-t border-slate-800 pt-6 mb-6">
-                <h3 class="text-sm font-bold text-indigo-400 mb-4 uppercase"><i class="fa-solid fa-rectangle-ad mr-2"></i> Ads Control</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div><label class="block text-xs font-bold text-slate-400 mb-2 uppercase">Ads to Show (Per Link)</label><input type="number" id="set-ads" class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white focus:border-indigo-500 outline-none"></div>
-                    <div><label class="block text-xs font-bold text-slate-400 mb-2 uppercase">Ad Timer Delay (Seconds)</label><input type="number" id="set-timer" class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white focus:border-indigo-500 outline-none"></div>
+            <!-- Ad Settings -->
+            <div class="col-span-2 md:col-span-1 border-b border-slate-700 pb-4">
+                <h3 class="text-lg font-bold text-amber-400 mb-4">Ad Provider Config</h3>
+                <div class="mb-3">
+                    <label class="block text-xs font-bold text-slate-400 uppercase">Active Rewarded Ad</label>
+                    <select id="set-active-ad" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"><option value="monetag">Monetag</option><option value="adsbitvex">AdsBitVex</option><option value="both">Both</option></select>
                 </div>
+                <div class="mb-3">
+                    <label class="block text-xs font-bold text-slate-400 uppercase">Active Banner Ad</label>
+                    <select id="set-active-banner" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"><option value="none">None</option><option value="monetag">Monetag</option><option value="adsbitvex">AdsBitVex</option></select>
+                </div>
+                <div class="mb-3"><label class="block text-xs font-bold text-slate-400 uppercase">Ad Timer (Seconds)</label><input type="number" id="set-timer" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"></div>
             </div>
 
-            <div class="border-t border-slate-800 pt-6 mb-6">
-                <h3 class="text-sm font-bold text-indigo-400 mb-4 uppercase"><i class="fa-solid fa-link mr-2"></i> Social & Legal Pages</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                    <div><label class="block text-xs font-bold text-slate-400 mb-2 uppercase">Telegram Channel URL</label><input type="url" id="set-tg" class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white focus:border-indigo-500 outline-none"></div>
-                    <div><label class="block text-xs font-bold text-slate-400 mb-2 uppercase">YouTube Channel URL</label><input type="url" id="set-yt" class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white focus:border-indigo-500 outline-none"></div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div><label class="block text-xs font-bold text-slate-400 mb-2 uppercase">Privacy Policy URL</label><input type="url" id="set-privacy" class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white focus:border-indigo-500 outline-none"></div>
-                    <div><label class="block text-xs font-bold text-slate-400 mb-2 uppercase">Terms of Service URL</label><input type="url" id="set-terms" class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white focus:border-indigo-500 outline-none"></div>
-                </div>
+            <!-- Monetag scripts -->
+            <div class="col-span-2">
+                <label class="block text-xs font-bold text-slate-400 uppercase">Monetag Rewarded SDK Code</label>
+                <textarea id="set-mone-script" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"></textarea>
+                <label class="block text-xs font-bold text-slate-400 uppercase mt-2">Monetag Function Name</label>
+                <input type="text" id="set-mone-func" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white" placeholder="show_12122788">
             </div>
 
-            <div class="border-t border-slate-800 pt-6 mb-8">
-                <label class="block text-xs font-bold text-slate-400 mb-2 uppercase">Allowed Payment Methods (Comma separated)</label>
-                <input type="text" id="set-payments" class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white focus:border-indigo-500 outline-none">
+            <!-- AdsBitVex scripts -->
+            <div class="col-span-2">
+                <label class="block text-xs font-bold text-slate-400 uppercase">AdsBitVex Rewarded SDK Code</label>
+                <textarea id="set-abx-script" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"></textarea>
+                <label class="block text-xs font-bold text-slate-400 uppercase mt-2">AdsBitVex Function Name</label>
+                <input type="text" id="set-abx-func" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white" placeholder="window.showadsbitvex">
             </div>
             
-            <button id="btn-save-settings" onclick="saveSettingsAction()" class="w-full bg-indigo-600 hover:bg-indigo-500 px-8 py-4 rounded-lg font-bold text-white shadow-lg transition-colors flex items-center justify-center">
-                <i class="fa-solid fa-floppy-disk mr-2"></i> Save Configuration
-            </button>
+            <!-- Banner Codes -->
+            <div class="col-span-2">
+                <label class="block text-xs font-bold text-slate-400 uppercase">AdsBitVex Banner HTML/JS</label>
+                <textarea id="set-abx-banner" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"></textarea>
+            </div>
+
+            <button onclick="saveSettings()" class="col-span-2 bg-indigo-600 hover:bg-indigo-500 py-3 rounded-lg font-bold text-white transition">Save All Settings</button>
         </div>
     </template>
 
-    <!-- TAB: BROADCAST -->
     <template id="tpl-broadcast">
         <h2 class="text-2xl font-bold mb-6">Bot Broadcast</h2>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="glass-panel p-6">
-                <div class="mb-4">
-                    <label class="block text-xs font-bold text-slate-400 mb-2 uppercase">Image URL (Optional)</label>
-                    <input type="url" id="bc-image" placeholder="https://example.com/image.jpg" class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white focus:border-indigo-500 outline-none" oninput="updatePreview()">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-xs font-bold text-slate-400 mb-2 uppercase">Message Caption (HTML Supported)</label>
-                    <textarea id="bc-caption" rows="5" placeholder="<b>Hello User!</b>&#10;Check out our new update. 🔥" class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white focus:border-indigo-500 outline-none" oninput="updatePreview()"></textarea>
-                </div>
-                <div class="mb-6 p-4 bg-slate-900 rounded-lg border border-slate-700">
-                    <label class="flex items-center space-x-3 cursor-pointer mb-3">
-                        <input type="checkbox" id="bc-btn-toggle" checked class="w-5 h-5 rounded accent-indigo-500" onchange="updatePreview()">
-                        <span class="text-sm font-bold text-white">Include "👉 Open now 👈" Button</span>
-                    </label>
-                    <label class="block text-xs font-bold text-slate-400 mb-2 uppercase">Existing Mini App Web URL</label>
-                    <input type="url" id="bc-mini-app-url" value="https://tgshorturl.vercel.app/" class="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white text-sm focus:border-indigo-500 outline-none">
-                </div>
-                <button id="btn-send-broadcast" onclick="startBroadcast()" class="w-full bg-amber-600 hover:bg-amber-500 px-6 py-4 rounded-lg font-bold text-white shadow-lg transition-colors flex items-center justify-center">
-                    <i class="fa-solid fa-paper-plane mr-2"></i> Send to All Users
-                </button>
-                <div id="bc-status" class="hidden mt-6 p-4 border border-indigo-500/30 bg-indigo-500/10 rounded-lg">
-                    <div class="flex justify-between text-sm mb-2 font-bold"><span>Progress: <span id="bc-percent">0%</span></span><span id="bc-count">0 / 0</span></div>
-                    <div class="w-full bg-slate-900 rounded-full h-2 mb-4"><div id="bc-bar" class="bg-indigo-500 h-2 rounded-full" style="width: 0%"></div></div>
-                    <div class="flex justify-between text-xs"><span class="text-emerald-400"><i class="fa-solid fa-check"></i> Sent: <span id="bc-sent">0</span></span><span class="text-red-400"><i class="fa-solid fa-xmark"></i> Failed: <span id="bc-failed">0</span></span></div>
-                </div>
-            </div>
-            <div>
-                <h3 class="text-sm font-bold text-slate-400 mb-4 uppercase">Live Telegram Preview</h3>
-                <div class="bg-[#0e1621] p-4 rounded-xl border border-slate-700 max-w-sm mx-auto shadow-2xl relative">
-                    <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-800">
-                        <div class="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white"><i class="fa-solid fa-robot"></i></div>
-                        <div><div class="text-white font-bold text-sm">TeleShortLink Bot <i class="fa-solid fa-circle-check text-blue-400 text-xs"></i></div><div class="text-slate-400 text-[10px]">bot</div></div>
-                    </div>
-                    <div class="tg-bubble p-2 inline-block max-w-[95%]">
-                        <img id="prev-img" src="" class="hidden w-full rounded-lg mb-2 object-cover max-h-48">
-                        <div id="prev-text" class="text-white text-sm break-words leading-relaxed px-1"></div>
-                    </div>
-                    <div id="prev-btn" class="mt-2 w-[95%] text-center bg-[#182533] hover:bg-[#202f40] text-blue-400 font-bold py-2 rounded-lg text-sm cursor-pointer border border-[#182533]">👉 Open now 👈</div>
-                </div>
-            </div>
+        <div class="glass-panel p-6 max-w-xl">
+            <textarea id="bc-caption" rows="5" placeholder="Message content..." class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white mb-4"></textarea>
+            <input type="url" id="bc-mini-app-url" value="https://tgshorturl.vercel.app/" class="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white mb-4">
+            <button onclick="sendBroadcast()" class="w-full bg-amber-600 hover:bg-amber-500 py-3 rounded-lg font-bold text-white shadow-lg">Broadcast to All Users</button>
         </div>
     </template>
 
     <script>
-        // --- API CONFIGURATION ---
         const SUPABASE_URL = 'https://nfjgjusfvuatjytfpfhf.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_aPROutC-ZbCxrxsJat8oFQ_2vI-eoaU';
-        const VERCEL_BROADCAST_API = 'https://tgshorturl.vercel.app/api/broadcast'; 
-        const ADMIN_PASSWORD = "TGShortUrl@14334514m"; 
-        
         let dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let settingsId = null;
 
-        // LOGIN
-        document.getElementById('btn-login').addEventListener('click', () => {
-            if(document.getElementById('admin-password').value === ADMIN_PASSWORD) {
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('admin-dashboard').classList.remove('hidden');
-                switchTab('dashboard', document.querySelector('.nav-btn'));
-            } else { alert("Incorrect Password!"); }
-        });
-
-        function getActiveMain() { return window.innerWidth < 768 ? document.getElementById('mobile-main') : document.getElementById('desktop-main'); }
-
-        // TAB SWITCHER
-        window.switchTab = function(tabName, btnEl) {
-            document.querySelectorAll('.nav-btn').forEach(b => {
-                b.classList.remove('bg-indigo-600', 'text-white');
-                b.classList.add('text-slate-400');
-                if(!b.classList.contains('px-3')) b.classList.add('hover:bg-slate-800');
-            });
-            if(btnEl) {
-                btnEl.classList.remove('text-slate-400', 'hover:bg-slate-800');
-                btnEl.classList.add('bg-indigo-600', 'text-white');
+        async function checkAdmin() {
+            const { data: { session } } = await dbClient.auth.getSession();
+            if (session) {
+                const { data: u } = await dbClient.from('users').select('is_admin').eq('auth_id', session.user.id).single();
+                if (u && u.is_admin) {
+                    document.getElementById('login-screen').classList.add('hidden');
+                    document.getElementById('admin-dashboard').classList.remove('hidden');
+                    switchTab('users', document.querySelector('.nav-btn'));
+                } else { alert("Not an admin."); dbClient.auth.signOut(); }
             }
+        }
+        window.onload = checkAdmin;
 
-            const mainContent = getActiveMain();
-            mainContent.innerHTML = document.getElementById(`tpl-${tabName}`).innerHTML;
+        async function adminLogin() {
+            const email = document.getElementById('admin-email').value;
+            const pass = document.getElementById('admin-password').value;
+            const { error } = await dbClient.auth.signInWithPassword({ email: email, password: pass });
+            if (error) alert(error.message); else checkAdmin();
+        }
+        async function adminLogout() { await dbClient.auth.signOut(); location.reload(); }
 
-            if(tabName === 'dashboard') loadDashboard();
-            if(tabName === 'users') loadUsers();
-            if(tabName === 'withdrawals') loadWithdrawals();
-            if(tabName === 'settings') loadSettings();
-            if(tabName === 'broadcast') updatePreview(); 
+        window.switchTab = function(tab, btn) {
+            document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('bg-indigo-600', 'text-white'); b.classList.add('text-slate-400'); });
+            if(btn) { btn.classList.add('bg-indigo-600', 'text-white'); btn.classList.remove('text-slate-400'); }
+            document.getElementById('main-content').innerHTML = document.getElementById(`tpl-${tab}`).innerHTML;
+            if(tab === 'users') loadUsers();
+            if(tab === 'withdrawals') loadWithdrawals();
+            if(tab === 'settings') loadSettings();
         }
 
-        // --- DASHBOARD LOGIC ---
-        async function loadDashboard() {
-            try {
-                // Total Users
-                const { count: uCount } = await dbClient.from('users').select('*', { count: 'exact', head: true });
-                document.getElementById('stat-total-users').innerText = uCount || 0;
-
-                // Blocked Users
-                const { count: bCount } = await dbClient.from('users').select('*', { count: 'exact', head: true }).eq('is_blocked', true);
-                document.getElementById('stat-blocked').innerText = bCount || 0;
-
-                // Active Today (Count distinct clicks today)
-                const today = new Date().toISOString().split('T')[0];
-                const { data: activeData } = await dbClient.from('click_logs').select('clicker_tg_id').gte('created_at', today);
-                const uniqueActive = new Set(activeData?.map(d => d.clicker_tg_id)).size;
-                document.getElementById('stat-active-users').innerText = uniqueActive || 0;
-
-                // Financial Stats
-                const { data: wData } = await dbClient.from('withdrawals').select('amount, status');
-                let paid = 0, pending = 0;
-                if(wData) {
-                    wData.forEach(w => {
-                        if(w.status === 'approved') paid += w.amount;
-                        if(w.status === 'pending') pending += w.amount;
-                    });
-                }
-                document.getElementById('stat-paid').innerText = `$${paid.toFixed(2)}`;
-                document.getElementById('stat-pending-amt').innerText = `$${pending.toFixed(2)}`;
-
-            } catch(e) { console.error("Dash Error", e); }
-        }
-
-        // --- USERS LOGIC ---
         async function loadUsers() {
-            const tbody = document.getElementById('admin-users-list');
-            try {
-                const { data } = await dbClient.from('users').select('*').order('created_at', { ascending: false });
-                if(!data || data.length === 0) return tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-500">No users found.</td></tr>';
-
-                tbody.innerHTML = '';
-                data.forEach(u => {
-                    const statusBadge = u.is_blocked ? '<span class="text-red-500 font-bold text-xs"><i class="fa-solid fa-ban mr-1"></i> Blocked</span>' : '<span class="text-emerald-500 font-bold text-xs"><i class="fa-solid fa-check mr-1"></i> Active</span>';
-                    const blockAction = u.is_blocked 
-                        ? `<button onclick="toggleBlock('${u.id}', false)" class="text-emerald-500 hover:text-emerald-400 p-2"><i class="fa-solid fa-unlock"></i></button>`
-                        : `<button onclick="toggleBlock('${u.id}', true)" class="text-amber-500 hover:text-amber-400 p-2"><i class="fa-solid fa-lock"></i></button>`;
-
-                    tbody.innerHTML += `
-                        <tr class="border-b border-slate-800 hover:bg-slate-800/30">
-                            <td class="p-4 text-xs font-mono text-indigo-400">${u.telegram_id}</td>
-                            <td class="p-4 font-medium">${u.first_name || 'N/A'}</td>
-                            <td class="p-4 font-bold text-emerald-400">$${parseFloat(u.balance || 0).toFixed(2)}</td>
-                            <td class="p-4">${statusBadge}</td>
-                            <td class="p-4 text-right flex justify-end space-x-2">
-                                ${blockAction}
-                                <button onclick="deleteUser('${u.id}')" class="text-red-500 hover:text-red-400 p-2"><i class="fa-solid fa-trash-can"></i></button>
-                            </td>
-                        </tr>`;
-                });
-            } catch (e) { console.error(e); }
+            const { data } = await dbClient.from('users').select('*').order('created_at', { ascending: false });
+            const tbody = document.getElementById('admin-users-list'); tbody.innerHTML = '';
+            data?.forEach(u => tbody.innerHTML += `<tr class="border-b border-slate-800"><td class="p-4 text-xs">${u.email || 'N/A'}</td><td class="p-4 text-xs font-mono text-indigo-400">${u.telegram_id || 'N/A'}</td><td class="p-4 text-emerald-400 font-bold">$${parseFloat(u.balance).toFixed(2)}</td><td class="p-4">${u.is_blocked ? '<span class="text-red-500">Blocked</span>' : '<span class="text-green-500">Active</span>'}</td><td class="p-4 text-right"><button onclick="toggleBlock('${u.id}', ${!u.is_blocked})" class="text-amber-500 mr-2">Toggle Ban</button></td></tr>`);
         }
 
-        window.toggleBlock = async function(userId, blockStatus) {
-            if(!confirm(`Confirm ${blockStatus ? 'Block' : 'Unblock'}?`)) return;
-            await dbClient.from('users').update({ is_blocked: blockStatus }).eq('id', userId);
-            loadUsers();
+        window.toggleBlock = async function(userId, block) {
+            await dbClient.from('users').update({ is_blocked: block }).eq('id', userId); loadUsers();
         }
 
-        window.deleteUser = async function(userId) {
-            if(!confirm(`WARNING: Are you sure you want to PERMANENTLY DELETE this user? This action cannot be undone.`)) return;
-            try {
-                const { error } = await dbClient.from('users').delete().eq('id', userId);
-                if(error) throw error;
-                loadUsers();
-            } catch(e) {
-                alert("Deletion failed! (Tip: Enable 'Cascade Delete' on foreign keys in Supabase database settings). Error: " + e.message);
+        async function loadWithdrawals() {
+            const { data } = await dbClient.from('withdrawals').select('*').order('created_at', { ascending: false });
+            const tbody = document.getElementById('admin-withdraw-list'); tbody.innerHTML = '';
+            data?.forEach(w => {
+                let actionHtml = w.status === 'pending' ? `<button onclick="processW('${w.id}', '${w.user_id}', ${w.amount}, 'approved')" class="bg-green-600 px-2 rounded mr-1">Approve</button><button onclick="processW('${w.id}', '${w.user_id}', ${w.amount}, 'rejected')" class="bg-red-600 px-2 rounded">Reject</button>` : w.status;
+                tbody.innerHTML += `<tr class="border-b border-slate-800"><td class="p-4 text-xs">${w.user_id.substring(0,8)}</td><td class="p-4 text-xs"><b>${w.method}</b> - ${w.details}</td><td class="p-4 text-emerald-400 font-bold">$${w.amount.toFixed(2)}</td><td class="p-4 text-center text-xs">${actionHtml}</td></tr>`;
+            });
+        }
+
+        window.processW = async function(wId, uId, amt, status) {
+            await dbClient.from('withdrawals').update({ status }).eq('id', wId);
+            if(status === 'rejected') {
+                const { data: u } = await dbClient.from('users').select('balance').eq('id', uId).single();
+                if(u) await dbClient.from('users').update({ balance: parseFloat(u.balance) + parseFloat(amt) }).eq('id', uId);
+            }
+            loadWithdrawals();
+        }
+
+        async function loadSettings() {
+            const { data } = await dbClient.from('settings').select('*').limit(1).single();
+            if(data) {
+                settingsId = data.id;
+                document.getElementById('set-cpm').value = data.cpm || 2;
+                document.getElementById('set-ref').value = data.refer_percent || 10;
+                document.getElementById('set-min-with').value = data.min_withdraw || 5;
+                document.getElementById('set-timer').value = data.ad_timer || 5;
+                document.getElementById('set-ip-hours').value = data.ip_restrict_hours || 24;
+                
+                document.getElementById('set-active-ad').value = data.active_reward_ad || 'monetag';
+                document.getElementById('set-active-banner').value = data.active_banner_ad || 'none';
+                
+                document.getElementById('set-mone-script').value = data.monetag_reward_script || '';
+                document.getElementById('set-mone-func').value = data.monetag_reward_func || 'show_12122788';
+                
+                document.getElementById('set-abx-script').value = data.adsbitvex_reward_script || '';
+                document.getElementById('set-abx-func').value = data.adsbitvex_reward_func || 'window.showadsbitvex';
+                
+                document.getElementById('set-abx-banner').value = data.adsbitvex_banner_code || '';
             }
         }
 
-        // --- WITHDRAWALS LOGIC ---
-        async function loadWithdrawals() {
-            const tbody = document.getElementById('admin-withdraw-list');
-            try {
-                const { data } = await dbClient.from('withdrawals').select('*').order('created_at', { ascending: false });
-                if(!data || data.length === 0) return tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-500">No withdrawal requests found.</td></tr>';
-
-                tbody.innerHTML = '';
-                data.forEach(w => {
-                    const dateStr = new Date(w.created_at).toLocaleDateString();
-                    let actionHtml = '';
-                    
-                    if(w.status === 'pending') {
-                        actionHtml = `
-                            <button onclick="processWithdrawal('${w.id}', '${w.user_id}', ${w.amount}, 'approved')" class="bg-emerald-600 hover:bg-emerald-500 px-3 py-1 rounded text-white text-xs mr-2 transition">Approve</button>
-                            <button onclick="processWithdrawal('${w.id}', '${w.user_id}', ${w.amount}, 'rejected')" class="bg-red-600 hover:bg-red-500 px-3 py-1 rounded text-white text-xs transition">Reject</button>
-                        `;
-                    } else {
-                        const color = w.status === 'approved' ? 'text-emerald-500' : 'text-red-500';
-                        actionHtml = `<span class="${color} font-bold text-xs uppercase">${w.status}</span>`;
-                    }
-
-                    tbody.innerHTML += `
-                        <tr class="border-b border-slate-800 hover:bg-slate-800/30">
-                            <td class="p-4 text-xs font-mono text-indigo-300">${w.username || w.user_id.substring(0,8)}</td>
-                            <td class="p-4 text-xs"><b>${w.method}</b><br><span class="text-slate-400">${w.details}</span></td>
-                            <td class="p-4 font-bold text-emerald-400">$${parseFloat(w.amount).toFixed(2)}</td>
-                            <td class="p-4 text-xs text-slate-400">${dateStr}</td>
-                            <td class="p-4 text-center">${actionHtml}</td>
-                        </tr>`;
-                });
-            } catch(e) {}
-        }
-
-        window.processWithdrawal = async function(wId, userId, amount, newStatus) {
-            if(!confirm(`Mark this withdrawal as ${newStatus.toUpperCase()}?`)) return;
-            try {
-                await dbClient.from('withdrawals').update({ status: newStatus }).eq('id', wId);
-                
-                // If rejected, refund money back to user balance
-                if(newStatus === 'rejected') {
-                    const { data: u } = await dbClient.from('users').select('balance').eq('id', userId).single();
-                    if(u) {
-                        await dbClient.from('users').update({ balance: parseFloat(u.balance) + parseFloat(amount) }).eq('id', userId);
-                    }
-                }
-                loadWithdrawals();
-            } catch(e) { alert("Error updating status."); }
-        }
-
-        // --- SETTINGS LOGIC ---
-        async function loadSettings() {
-            try {
-                const { data } = await dbClient.from('settings').select('*').limit(1).single();
-                if(data) {
-                    settingsId = data.id;
-                    document.getElementById('set-cpm').value = data.cpm || 0;
-                    document.getElementById('set-ref').value = data.refer_percent || 0;
-                    document.getElementById('set-ads').value = data.ads_per_link || 1;
-                    document.getElementById('set-timer').value = data.ad_timer || 5;
-                    document.getElementById('set-payments').value = data.payment_methods || '';
-                    document.getElementById('set-min-with').value = data.min_withdraw || 5;
-                    document.getElementById('set-tg').value = data.tg_channel_url || '';
-                    document.getElementById('set-yt').value = data.yt_channel_url || '';
-                    document.getElementById('set-privacy').value = data.privacy_url || '';
-                    document.getElementById('set-terms').value = data.terms_url || '';
-                    document.getElementById('set-maintenance').checked = data.maintenance_mode || false;
-                }
-            } catch(e) {}
-        }
-
-        window.saveSettingsAction = async function() {
-            const btn = document.getElementById('btn-save-settings');
-            const originalHTML = btn.innerHTML;
-            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Saving...`;
-            
+        window.saveSettings = async function() {
             const updates = {
-                cpm: parseFloat(document.getElementById('set-cpm').value) || 0,
-                refer_percent: parseInt(document.getElementById('set-ref').value) || 0,
-                ads_per_link: parseInt(document.getElementById('set-ads').value) || 1,
-                ad_timer: parseInt(document.getElementById('set-timer').value) || 5,
-                payment_methods: document.getElementById('set-payments').value,
-                min_withdraw: parseFloat(document.getElementById('set-min-with').value) || 5,
-                tg_channel_url: document.getElementById('set-tg').value,
-                yt_channel_url: document.getElementById('set-yt').value,
-                privacy_url: document.getElementById('set-privacy').value,
-                terms_url: document.getElementById('set-terms').value,
-                maintenance_mode: document.getElementById('set-maintenance').checked
+                cpm: parseFloat(document.getElementById('set-cpm').value),
+                refer_percent: parseInt(document.getElementById('set-ref').value),
+                min_withdraw: parseFloat(document.getElementById('set-min-with').value),
+                ad_timer: parseInt(document.getElementById('set-timer').value),
+                ip_restrict_hours: parseInt(document.getElementById('set-ip-hours').value),
+                active_reward_ad: document.getElementById('set-active-ad').value,
+                active_banner_ad: document.getElementById('set-active-banner').value,
+                monetag_reward_script: document.getElementById('set-mone-script').value,
+                monetag_reward_func: document.getElementById('set-mone-func').value,
+                adsbitvex_reward_script: document.getElementById('set-abx-script').value,
+                adsbitvex_reward_func: document.getElementById('set-abx-func').value,
+                adsbitvex_banner_code: document.getElementById('set-abx-banner').value
             };
-            
-            try {
-                if(settingsId) await dbClient.from('settings').update(updates).eq('id', settingsId);
-                else await dbClient.from('settings').insert([updates]);
-                alert('Settings Saved Successfully!');
-            } catch(e) { alert("Error saving settings."); }
-            btn.innerHTML = originalHTML;
+            if(settingsId) await dbClient.from('settings').update(updates).eq('id', settingsId);
+            else await dbClient.from('settings').insert([updates]);
+            alert("Settings Saved Successfully!");
         }
 
-        // --- BROADCAST LOGIC ---
-        window.updatePreview = function() {
-            const img = document.getElementById('bc-image')?.value || '';
-            const text = document.getElementById('bc-caption')?.value || 'Message will appear here...';
-            const showBtn = document.getElementById('bc-btn-toggle')?.checked;
-
-            const pImg = document.getElementById('prev-img');
-            if(img) { pImg.src = img; pImg.classList.remove('hidden'); } else { pImg.classList.add('hidden'); }
-            document.getElementById('prev-text').innerHTML = text.replace(/\n/g, '<br>');
-            if(showBtn) document.getElementById('prev-btn').classList.remove('hidden'); else document.getElementById('prev-btn').classList.add('hidden');
-        }
-
-        window.startBroadcast = async function() {
-            const btn = document.getElementById('btn-send-broadcast');
-            const imgUrl = document.getElementById('bc-image').value.trim();
+        window.sendBroadcast = async function() {
             const caption = document.getElementById('bc-caption').value;
-            const useBtn = document.getElementById('bc-btn-toggle').checked;
-            const miniAppUrl = document.getElementById('bc-mini-app-url').value.trim();
-
-            if(!caption && !imgUrl) return alert("Please add an image or a message to broadcast.");
-            if(!confirm("Send broadcast to ALL registered users?")) return;
-
-            btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Sending...';
-            document.getElementById('bc-status').classList.remove('hidden');
-
+            const url = document.getElementById('bc-mini-app-url').value;
+            if(!caption) return alert("Enter message!");
             try {
                 const { data: users } = await dbClient.from('users').select('telegram_id').not('telegram_id', 'is', null);
-                if(!users || users.length === 0) throw new Error("No users found.");
-                
                 const chatIds = users.map(u => u.telegram_id);
-                const total = chatIds.length;
-                let sent = 0; let failed = 0;
-
-                const chunkSize = 25;
-                for (let i = 0; i < total; i += chunkSize) {
-                    const chunk = chatIds.slice(i, i + chunkSize);
-                    const response = await fetch(VERCEL_BROADCAST_API, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ chat_ids: chunk, image_url: imgUrl, caption: caption, use_button: useBtn, mini_app_url: miniAppUrl })
-                    });
-                    if(response.ok) {
-                        const result = await response.json();
-                        sent += result.sent || 0; failed += result.failed || 0;
-                    } else { failed += chunk.length; }
-
-                    let processed = Math.min(i + chunkSize, total);
-                    let percent = Math.round((processed / total) * 100);
-                    document.getElementById('bc-percent').innerText = `${percent}%`;
-                    document.getElementById('bc-count').innerText = `${processed} / ${total}`;
-                    document.getElementById('bc-bar').style.width = `${percent}%`;
-                    document.getElementById('bc-sent').innerText = sent;
-                    document.getElementById('bc-failed').innerText = failed;
-                }
-                alert(`Broadcast Completed!\nSent: ${sent}\nFailed: ${failed}`);
-            } catch(e) { alert("Error: " + e.message); }
-            btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i> Send to All Users';
+                await fetch('/api/broadcast', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_ids: chatIds, caption: caption, mini_app_url: url }) });
+                alert("Broadcast sent via Vercel backend!");
+            } catch(e) { alert(e.message); }
         }
     </script>
 </body>
-  </html>
+</html>
