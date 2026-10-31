@@ -417,38 +417,6 @@ window.addEventListener('unhandledrejection', function(e) {
     }
         }
 
-            const { data: { session } } = await dbClient.auth.getSession();
-            let startParam = tg.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get('link');
-
-            if (startParam && startParam.startsWith('link_')) {
-                // Ad Viewer (No Auth required just to unlock a link)
-                window.currentShortId = startParam.replace('link_', '');
-                
-                // Inject Unlock Banner if configured
-                if(adminSettings.active_banner_ad === 'monetag' && adminSettings.monetag_banner_code) {
-                    injectHTMLWithScripts(adminSettings.monetag_banner_code, 'unlock-banner-container');
-                } else if(adminSettings.active_banner_ad === 'adsbitvex' && adminSettings.adsbitvex_banner_code) {
-                    injectHTMLWithScripts(adminSettings.adsbitvex_banner_code, 'unlock-banner-container');
-                }
-
-                document.getElementById('ui-loading').classList.add('hidden');
-                document.getElementById('ui-ad-viewer').classList.remove('hidden');
-                setupAdStep();
-            } else {
-                if (session) {
-                    const { data: u } = await dbClient.from('users').select('*').eq('auth_id', session.user.id).single();
-                    if (u && u.is_blocked) return document.getElementById('loading-title').innerText = "Account Blocked";
-                    currentUserData = u;
-                    document.getElementById('ui-loading').classList.add('hidden');
-                    document.getElementById('ui-main-app').classList.remove('hidden');
-                    setupDashboard();
-                } else {
-                    document.getElementById('ui-loading').classList.add('hidden');
-                    document.getElementById('ui-auth').classList.remove('hidden');
-                }
-            }
-        }
-
         // AUTHENTICATION LOGIC
         function toggleAuthMode() {
             isLoginMode = !isLoginMode;
