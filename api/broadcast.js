@@ -1,4 +1,5 @@
 export default async function handler(req, res) {
+    // Only allow POST requests
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -6,6 +7,7 @@ export default async function handler(req, res) {
     const { chat_ids, image_url, caption, use_button, mini_app_url } = req.body;
     const BOT_TOKEN = process.env.BOT_TOKEN; 
 
+    // Security check for Bot Token
     if (!BOT_TOKEN) {
         return res.status(500).json({ error: 'BOT_TOKEN is missing on server.' });
     }
@@ -19,24 +21,26 @@ export default async function handler(req, res) {
 
     // --- SMART BUTTON LOGIC ---
     let buttonConfig = {};
-    // Updated fallback URL to your live Vercel domain
-    const finalUrl = mini_app_url || "https://tgshorturl.vercel.app";
+    const finalUrl = mini_app_url || "https://tgshorturl.vercel.app/";
     
-    // Agar t.me link hai toh normal 'url' button banayega, warna 'web_app' button banayega
+    // If the link is a t.me link, use normal 'url', otherwise open as an inside-Telegram 'web_app'
     if (finalUrl.includes('t.me')) {
         buttonConfig = { url: finalUrl };
     } else {
         buttonConfig = { web_app: { url: finalUrl } };
     }
 
-    const reply_markup = use_button ? {
+    // Default to showing the button unless explicitly disabled
+    const showButton = use_button !== false; 
+    const reply_markup = showButton ? {
         inline_keyboard: [[{ 
-            text: "👉 Open now 👈", 
+            text: "👉 Open TGShortUrl 👈", 
             ...buttonConfig 
         }]]
     } : undefined;
     // -------------------------
 
+    // Determine if sending a text message or a photo message
     const endpoint = image_url ? 'sendPhoto' : 'sendMessage';
 
     for (const chat_id of chat_ids) {
@@ -68,7 +72,8 @@ export default async function handler(req, res) {
                 console.error(`Error for ${chat_id}:`, data.description);
             }
 
-            // Rate limit bachane ke liye delay
+            // Telegram API limits bots to ~30 messages per second. 
+            // 35ms delay = approx 28 messages per second to keep you safe from bans.
             await new Promise(resolve => setTimeout(resolve, 35));
 
         } catch (error) {
@@ -76,5 +81,5 @@ export default async function handler(req, res) {
         }
     }
 
-    res.status(200).json({ sent, failed });
-              }
+    return res.status(200).json({ sent, failed });
+}
