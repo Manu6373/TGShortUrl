@@ -111,18 +111,17 @@
                 <div id="dash-banner-container" class="mx-4 mb-6 flex justify-center hidden"></div>
 
                 <div class="grid grid-cols-2 gap-4 mx-4 mb-6">
-                    <div class="glass-panel p-5 text-center relative overflow-hidden">
-                        <div class="absolute -right-3 -bottom-3 opacity-5"><i class="fa-solid fa-chart-line text-6xl"></i></div>
-                        <div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Today's Earn</div><div class="text-2xl font-bold text-emerald-400" id="stat-today-earn">$0.00</div>
-                    </div>
-                    <div class="glass-panel p-5 text-center relative overflow-hidden">
-                        <div class="absolute -right-3 -bottom-3 opacity-5"><i class="fa-solid fa-eye text-6xl"></i></div>
-                        <div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Total Views</div><div class="text-2xl font-bold text-white" id="stat-views">0</div>
-                    </div>
-                    <div class="glass-panel p-5 col-span-2 flex justify-between items-center bg-gradient-to-r from-slate-800 to-indigo-900/30">
-                        <div><div class="text-indigo-300 text-xs font-bold uppercase mb-1">Global CPM Rate</div><div class="text-[10px] text-slate-400">Valid for all countries</div></div>
-                        <div class="text-3xl font-bold text-indigo-400" id="stat-cpm">$0.00</div>
-                    </div>
+                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Today's Earnings</div><div class="text-2xl font-bold text-emerald-400" id="stat-today-earn">$0.0000</div></div>
+                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Today's Views</div><div class="text-2xl font-bold text-white" id="stat-today-views">0</div></div>
+                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Referral Earnings</div><div class="text-2xl font-bold text-rose-400" id="stat-ref-earn">$0.0000</div></div>
+                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Average CPM</div><div class="text-2xl font-bold text-indigo-400" id="stat-avg-cpm">$0.0000</div></div>
+                </div>
+                <div class="mx-4 mb-3 px-2 text-indigo-300 text-sm font-bold uppercase tracking-wider">This Month's Report</div>
+                <div class="grid grid-cols-2 gap-4 mx-4 mb-6">
+                    <div class="glass-panel p-5 text-center"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Monthly Views</div><div class="text-2xl font-bold text-white" id="stat-month-views">0</div></div>
+                    <div class="glass-panel p-5 text-center"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Monthly Earnings</div><div class="text-2xl font-bold text-emerald-400" id="stat-month-earn">$0.0000</div></div>
+                    <div class="glass-panel p-5 text-center"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Monthly Referral Earnings</div><div class="text-2xl font-bold text-rose-400" id="stat-month-ref">$0.0000</div></div>
+                    <div class="glass-panel p-5 text-center"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Monthly Average CPM</div><div class="text-2xl font-bold text-indigo-400" id="stat-month-cpm">$0.0000</div></div>
                 </div>
             </div>
 
@@ -228,6 +227,18 @@
 
     <script>
         // API CONFIGURATION
+        // DEBUG ERROR DETECTION
+window.addEventListener('error', function(e) {
+    console.error("JavaScript Error:", e.message);
+    document.getElementById('loading-text').innerText =
+        "JS Error: " + e.message;
+});
+
+window.addEventListener('unhandledrejection', function(e) {
+    console.error("Promise Error:", e.reason);
+    document.getElementById('loading-text').innerText =
+        "Connection Error: " + (e.reason?.message || e.reason);
+});
         const SUPABASE_URL = 'https://nfjgjusfvuatjytfpfhf.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_aPROutC-ZbCxrxsJat8oFQ_2vI-eoaU';
         const VERCEL_API_URL = '/api'; 
@@ -235,6 +246,29 @@
         const APP_SHORT_NAME = 'tgshorturlvercel'; 
 
         let dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // SUPABASE CONNECTION TEST
+(async function() {
+    try {
+        console.log("Testing Supabase connection...");
+
+        const { data, error } = await dbClient
+            .from('settings')
+            .select('*')
+            .limit(1);
+
+        if (error) throw error;
+
+        console.log("SUPABASE CONNECTION SUCCESS:", data);
+        document.getElementById('loading-text').innerText =
+            "Supabase Connected Successfully!";
+
+    } catch (error) {
+        console.error("SUPABASE CONNECTION FAILED:", error);
+
+        document.getElementById('loading-text').innerText =
+            "Supabase Error: " + error.message;
+    }
+})();
         let currentUserData = null;
         let adminSettings = {};
         
@@ -449,6 +483,27 @@
             if(pageId === 'page-wallet') loadWithdrawalHistory();
         }
 
+        async function loadPersonalMonthlyStats() {
+            const now = new Date();
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+            const nextMonth = new Date(now.getFullYear(), now.getMonth()+1, 1).toISOString();
+            const { data: links } = await dbClient.from('links').select('id').eq('user_id', currentUserData.id);
+            const linkIds = (links || []).map(x => x.id);
+            let monthlyViews = 0;
+            if (linkIds.length) {
+                const { count } = await dbClient.from('click_logs').select('id', {count:'exact', head:true}).in('link_id', linkIds).gte('created_at', monthStart).lt('created_at', nextMonth);
+                monthlyViews = count || 0;
+            }
+            const { data: logs, error } = await dbClient.from('earning_logs').select('amount,earning_type,created_at').eq('user_id', currentUserData.id).gte('created_at', monthStart).lt('created_at', nextMonth);
+            let monthEarn = 0, monthReferral = 0;
+            if (!error && logs) logs.forEach(row => { const amount = Number(row.amount)||0; if(row.earning_type === 'referral') monthReferral += amount; else monthEarn += amount; });
+            document.getElementById('stat-month-views').innerText = monthlyViews;
+            document.getElementById('stat-month-earn').innerText = `$${monthEarn.toFixed(4)}`;
+            document.getElementById('stat-month-ref').innerText = `$${monthReferral.toFixed(4)}`;
+            document.getElementById('stat-ref-earn').innerText = `$${monthReferral.toFixed(4)}`;
+            document.getElementById('stat-month-cpm').innerText = `$${(monthlyViews ? (monthEarn/monthlyViews*1000) : 0).toFixed(4)}`;
+        }
+
         function setupDashboard() {
             const u = currentUserData;
             document.getElementById('user-greeting').innerText = `Hello, ${u.first_name}!`;
@@ -458,10 +513,13 @@
             document.getElementById('header-balance').innerText = `$${parseFloat(u.balance || 0).toFixed(2)}`;
             document.getElementById('wallet-balance-page').innerText = `$${parseFloat(u.balance || 0).toFixed(2)}`;
             document.getElementById('stat-today-earn').innerText = `$${parseFloat(u.today_earnings || 0).toFixed(4)}`;
-            document.getElementById('stat-views').innerText = u.total_clicks || 0;
-            document.getElementById('stat-cpm').innerText = `$${parseFloat(adminSettings.cpm || 0).toFixed(2)}`;
+            document.getElementById('stat-today-views').innerText = u.today_clicks || 0;
+            document.getElementById('stat-avg-cpm').innerText = `$${parseFloat(adminSettings.cpm || 0).toFixed(4)}`;
+            loadPersonalMonthlyStats();
             
             const methods = (adminSettings.payment_methods || "UPI").split(',');
+            const withdrawBtn = document.querySelector('button[onclick="submitWithdrawal()"]');
+            if (adminSettings.withdrawals_enabled === false) { withdrawBtn.disabled = true; withdrawBtn.innerText = 'Withdrawals Temporarily Disabled'; withdrawBtn.classList.add('opacity-50'); }
             const sel = document.getElementById('withdraw-method');
             sel.innerHTML = '<option value="">Choose Method...</option>';
             methods.forEach(m => sel.innerHTML += `<option value="${m.trim()}">${m.trim()}</option>`);
@@ -479,37 +537,11 @@
                 document.getElementById('long-url-input').value = '';
                 this.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i><span>Shorten & Earn</span>'; this.disabled = false;
             });
-            // COPY SHORT LINK
-document.getElementById('btn-copy-link').addEventListener('click', async function() {
-    const text = document.getElementById('short-link-display').innerText.trim();
-
-    if (!text) {
-        alert("No link available!");
-        return;
-    }
-
-    try {
-        await navigator.clipboard.writeText(text);
-        alert("Link copied successfully!");
-    } catch (error) {
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        document.body.appendChild(textarea);
-        textarea.select();
-
-        const copied = document.execCommand('copy');
-        textarea.remove();
-
-        if (copied) {
-            alert("Link copied successfully!");
-        } else {
-            alert("Copy failed. Please copy manually.");
-        }
-    }
-});
         }
 
         window.submitWithdrawal = async function() {
+            const { data: latestSettings } = await dbClient.from('settings').select('withdrawals_enabled').limit(1).maybeSingle();
+            if (latestSettings?.withdrawals_enabled === false) return alert('Withdrawals are temporarily unavailable. Please try again later.');
             const method = document.getElementById('withdraw-method').value;
             const details = document.getElementById('withdraw-details').value.trim();
             const amount = parseFloat(document.getElementById('withdraw-amount').value);
@@ -589,4 +621,4 @@ document.getElementById('btn-copy-link').addEventListener('click', async functio
         window.onload = initApp;
     </script>
 </body>
-</html>
+    </html>
