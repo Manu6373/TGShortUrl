@@ -458,9 +458,9 @@
             
             loadDashboardReports();
 
-            const minInr = Number(adminSettings.min_withdraw_inr ?? 50);
+            const minUsd = Number(adminSettings.min_withdraw ?? 5);
             const refPercent = Number(adminSettings.refer_percent ?? 1);
-            document.getElementById('min-withdraw-display').innerText = `$${(minInr / 85).toFixed(4)}`; 
+            document.getElementById('min-withdraw-display').innerText = `$${minUsd.toFixed(4)}`; 
             document.getElementById('refer-commission').innerText = refPercent;
             document.getElementById('referral-link-display').innerText = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=ref_${u.telegram_id}`;
             
@@ -577,7 +577,7 @@
             
             if(!method || !details || !tgLink) return alert("All fields including Telegram Link are required.");
             
-            const minInr = Number(adminSettings.min_withdraw_inr ?? 50);
+            const minUsd = Number(adminSettings.min_withdraw ?? 5);
             
             try {
                 // Secure Transactional Request via RPC
@@ -586,7 +586,7 @@
                     p_method: method,
                     p_details: details,
                     p_tg_link: tgLink,
-                    p_min_inr: minInr
+                    p_min_inr: minUsd * 85
                 });
 
                 if (error) throw error;
