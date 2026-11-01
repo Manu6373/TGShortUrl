@@ -65,6 +65,9 @@
                     <input type="password" id="auth-password" required minlength="6" class="w-full bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-xl focus:border-indigo-500 outline-none pr-10">
                     <button type="button" onclick="togglePassword()" class="absolute right-3 top-8 text-slate-400 hover:text-white"><i id="eye-icon" class="fa-solid fa-eye"></i></button>
                 </div>
+                <div id="forgot-password-row" class="text-right -mt-2">
+                    <button type="button" onclick="forgotPassword()" class="text-xs text-indigo-400 font-semibold hover:underline">Forgot Password?</button>
+                </div>
                 <button type="submit" id="btn-auth" class="w-full primary-gradient text-white font-bold py-3.5 rounded-xl shadow-lg mt-2">Login</button>
             </form>
             
@@ -105,17 +108,19 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-4 mx-4 mb-6">
-                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Today's Earnings</div><div class="text-emerald-400" id="stat-today-earn"></div></div>
+                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Today's Earnings</div><div class="text-xl font-bold text-emerald-400 mt-1" id="stat-today-earn"></div></div>
                     <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Today's Views</div><div class="text-2xl font-bold text-white mt-1" id="stat-today-views">0</div></div>
-                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Average CPM</div><div class="text-indigo-400" id="stat-avg-cpm"></div></div>
+                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Average CPM</div><div class="text-xl font-bold text-indigo-400 mt-1" id="stat-avg-cpm"></div></div>
                     <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Total Clicks</div><div class="text-2xl font-bold text-white mt-1" id="stat-total-clicks">0</div></div>
                 </div>
                 
                 <div class="mx-4 mb-6">
                     <h3 class="text-sm font-bold text-white mb-3 uppercase tracking-wider"><i class="fa-solid fa-chart-column text-indigo-400 mr-2"></i>Today's Report</h3>
                     <div class="grid grid-cols-2 gap-4">
-                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1">Earnings</div><div id="report-today-earn" class="text-xl font-bold text-emerald-400">0.0000</div></div>
-                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1">Views</div><div id="report-today-views" class="text-xl font-bold text-white">0</div></div>
+                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1">Today's Earnings</div><div id="report-today-earn" class="text-xl font-bold text-emerald-400">0.0000</div></div>
+                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1">Today's Views</div><div id="report-today-views" class="text-xl font-bold text-white">0</div></div>
+                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1">Referral Earnings</div><div id="report-today-referral" class="text-xl font-bold text-emerald-400">0.0000</div></div>
+                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1">Average CPM</div><div id="report-today-cpm" class="text-xl font-bold text-indigo-400">0.0000</div></div>
                     </div>
                 </div>
                 <div class="mx-4 mb-6">
@@ -161,7 +166,7 @@
                 <div class="glass-panel p-8 mb-6 text-center border border-emerald-500/30 bg-gradient-to-br from-emerald-900/20 to-transparent relative overflow-hidden">
                     <div class="text-sm text-emerald-200 mb-4 font-medium uppercase tracking-wider">Available Balance</div>
                     <div id="wallet-balance-page" class="mb-6"></div>
-                    <div class="text-xs text-slate-400">Minimum Withdrawal: <span id="min-withdraw-display" class="font-bold text-white">₹50 INR</span></div>
+                    <div class="text-xs text-slate-400">Minimum Withdrawal: <span id="min-withdraw-display" class="font-bold text-white">$0.5882 USD</span></div>
                 </div>
                 <div class="glass-panel p-6 mb-6 border border-slate-700">
                     <h3 class="font-bold text-sm text-white mb-4 uppercase tracking-wider border-b border-slate-700 pb-2">Request Payout</h3>
@@ -183,6 +188,7 @@
                     <div id="profile-avatar" class="w-24 h-24 rounded-full primary-gradient mx-auto mb-4 flex items-center justify-center text-4xl font-bold text-white">?</div>
                     <h2 id="profile-name" class="text-2xl font-bold text-white">User</h2>
                     <p id="profile-id" class="text-xs text-indigo-300 font-mono mt-2">ID: ...</p>
+                    <a href="https://t.me/TGShortUrl" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 mt-5 px-5 py-3 rounded-xl bg-sky-500/10 border border-sky-400/30 text-sky-300 font-semibold text-sm"><i class="fa-brands fa-telegram text-lg"></i> Official Telegram Channel</a>
                     <button onclick="handleLogout()" class="mt-4 bg-red-600/20 text-red-400 border border-red-500/30 px-6 py-2 rounded-lg font-bold text-sm hover:bg-red-600/40 transition">Logout</button>
                 </div>
             </div>
@@ -348,6 +354,25 @@
             if (input.type === 'password') { input.type = 'text'; icon.classList.replace('fa-eye', 'fa-eye-slash'); }
             else { input.type = 'password'; icon.classList.replace('fa-eye-slash', 'fa-eye'); }
         }
+        async function forgotPassword() {
+            const email = document.getElementById('auth-email').value.trim();
+            if (!email) {
+                alert('Please enter your registered email address first.');
+                document.getElementById('auth-email').focus();
+                return;
+            }
+            try {
+                const { error } = await dbClient.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin
+                });
+                if (error) throw error;
+                alert('Password reset email sent. Check your inbox and spam folder.');
+            } catch (error) {
+                console.error('Password reset error:', error);
+                alert('Could not send reset email: ' + (error?.message || 'Unknown error'));
+            }
+        }
+
         async function handleAuth(e) {
             e.preventDefault();
             const email = document.getElementById('auth-email').value.trim();
@@ -440,7 +465,7 @@
 
             const minInr = Number(adminSettings.min_withdraw_inr ?? 50);
             const refPercent = Number(adminSettings.refer_percent ?? 1);
-            document.getElementById('min-withdraw-display').innerText = `₹${minInr.toFixed(2)} INR`;
+            document.getElementById('min-withdraw-display').innerText = `$${(minInr / 85).toFixed(4)} USD`; 
             document.getElementById('refer-commission').innerText = refPercent;
             document.getElementById('referral-link-display').innerText = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=ref_${u.telegram_id}`;
             
@@ -453,40 +478,89 @@
             
             document.getElementById('btn-shorten').addEventListener('click', async function() {
                 const url = document.getElementById('long-url-input').value.trim();
-                if (!url.startsWith('http')) return alert("Valid URL required");
-                const shortId = Math.random().toString(36).substring(2, 8);
-                await dbClient.from('links').insert([{ original_url: url, short_id: shortId, user_id: currentUserData.id }]);
-                document.getElementById('short-link-display').innerText = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=link_${shortId}`;
-                document.getElementById('shorten-result').classList.remove('hidden');
-                document.getElementById('long-url-input').value = '';
-                loadTopLinks(); // refresh graph
+                if (!/^https?:\/\//i.test(url)) return alert('Please enter a valid URL starting with http:// or https://');
+                const button = this;
+                button.disabled = true;
+                try {
+                    const shortId = Math.random().toString(36).substring(2, 10);
+                    const { error } = await dbClient.from('links').insert([{ original_url: url, short_id: shortId, user_id: currentUserData.id }]);
+                    if (error) throw error;
+                    document.getElementById('short-link-display').innerText = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=link_${shortId}`;
+                    document.getElementById('shorten-result').classList.remove('hidden');
+                    document.getElementById('long-url-input').value = '';
+                } catch (error) {
+                    console.error('Short link creation error:', error);
+                    alert('Could not create short link: ' + (error?.message || 'Unknown error'));
+                } finally {
+                    button.disabled = false;
+                }
             });
 
-            loadTopLinks();
+            document.getElementById('btn-copy-link').onclick = async function() {
+                const text = document.getElementById('short-link-display').innerText.trim();
+                if (!text) return alert('No short link to copy.');
+                try {
+                    if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(text);
+                    } else {
+                        const field = document.createElement('textarea');
+                        field.value = text;
+                        field.setAttribute('readonly', '');
+                        field.style.position = 'fixed';
+                        field.style.opacity = '0';
+                        document.body.appendChild(field);
+                        field.select();
+                        const copied = document.execCommand('copy');
+                        field.remove();
+                        if (!copied) throw new Error('Clipboard access is unavailable');
+                    }
+                    const copyButton = document.getElementById('btn-copy-link');
+                    copyButton.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    setTimeout(() => copyButton.innerHTML = '<i class="fa-solid fa-copy"></i>', 1500);
+                } catch (error) {
+                    console.error('Copy link error:', error);
+                    alert('Copy failed. Please select and copy the link manually.');
+                }
+            };
+
         }
 
         async function loadDashboardReports() {
             const u = currentUserData || {};
-            document.getElementById('report-today-earn').innerText = Number(u.today_earnings || 0).toFixed(4);
+            const todayEarn = Number(u.today_earnings || 0);
+            document.getElementById('report-today-earn').innerText = todayEarn.toFixed(4);
             document.getElementById('report-today-views').innerText = Number(u.today_clicks || 0);
+            document.getElementById('report-today-cpm').innerText = Number(adminSettings.cpm || 0).toFixed(4);
+
+            // Use local calendar boundaries, converted to ISO for Supabase timestamps.
             const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+            const tomorrowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
             const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
             const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
-            const { data: logs, error } = await dbClient.from('earning_logs').select('amount,source,created_at').eq('user_id', u.id).gte('created_at', monthStart).lt('created_at', nextMonth);
-            if (error) {
-                document.getElementById('report-month-earn').innerText = '—';
-            } else {
-                const monthEarn = (logs || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
-                document.getElementById('report-month-earn').innerText = monthEarn.toFixed(4);
-            }
-            const { count } = await dbClient.from('click_logs').select('id', { count: 'exact', head: true }).gte('created_at', monthStart).lt('created_at', nextMonth);
-            // click_logs records valid reward attempts platform-wide; use this user's owned-link click count from logs via link IDs.
+
+            const { data: todayReferralRows, error: todayReferralError } = await dbClient
+                .from('earning_logs').select('amount').eq('user_id', u.id)
+                .eq('source', 'referral_commission').gte('created_at', todayStart).lt('created_at', tomorrowStart);
+            document.getElementById('report-today-referral').innerText = todayReferralError
+                ? '—'
+                : (todayReferralRows || []).reduce((sum, row) => sum + Number(row.amount || 0), 0).toFixed(4);
+
+            const { data: monthLogs, error: monthLogError } = await dbClient
+                .from('earning_logs').select('amount').eq('user_id', u.id)
+                .gte('created_at', monthStart).lt('created_at', nextMonth);
+            document.getElementById('report-month-earn').innerText = monthLogError
+                ? '—'
+                : (monthLogs || []).reduce((sum, row) => sum + Number(row.amount || 0), 0).toFixed(4);
+
             const { data: userLinks } = await dbClient.from('links').select('id').eq('user_id', u.id);
             const linkIds = (userLinks || []).map(x => x.id);
             let monthlyViews = 0;
             if (linkIds.length) {
-                const { count: ownedCount } = await dbClient.from('click_logs').select('id', { count: 'exact', head: true }).in('link_id', linkIds).gte('created_at', monthStart).lt('created_at', nextMonth);
-                monthlyViews = ownedCount || 0;
+                const { count: ownedCount, error: viewsError } = await dbClient.from('click_logs')
+                    .select('id', { count: 'exact', head: true }).in('link_id', linkIds)
+                    .gte('created_at', monthStart).lt('created_at', nextMonth);
+                monthlyViews = viewsError ? 0 : (ownedCount || 0);
             }
             document.getElementById('report-month-views').innerText = monthlyViews;
         }
