@@ -17,6 +17,7 @@
             <input type="email" id="admin-email" placeholder="Admin Email" class="w-full bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-lg mb-4">
             <input type="password" id="admin-password" placeholder="Admin Password" class="w-full bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-lg mb-4">
             <button onclick="adminLogin()" class="w-full bg-indigo-600 font-bold py-3 rounded-lg">Login</button>
+            <p id="admin-login-error" class="text-rose-400 text-sm mt-3" role="alert"></p>
         </div>
     </div>
 
@@ -76,30 +77,48 @@
     </template>
 
     <script>
-        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; 
-        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+        const SUPABASE_URL = 'https://nfjgjusfvuatjytfpfhf.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_aPROutC-ZbCxrxsJat8oFQ_2vI-eoaU';
         let dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let sessionToken = '';
 
         async function checkAdmin() {
-            const { data: { session } } = await dbClient.auth.getSession();
-            if (session) {
+            try {
+                const { data: { session }, error: sessionError } = await dbClient.auth.getSession();
+                if (sessionError) throw sessionError;
+                if (!session) return false;
                 sessionToken = session.access_token;
-                const { data: u } = await dbClient.from('users').select('is_admin').or(`auth_id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`).maybeSingle();
-                if (u && u.is_admin) {
-                    document.getElementById('login-screen').classList.add('hidden');
-                    document.getElementById('admin-dashboard').classList.remove('hidden');
-                    switchTab('dashboard', document.querySelector('.nav-btn'));
-                } else { dbClient.auth.signOut(); }
+                const { data: u, error: userError } = await dbClient
+                    .from('users').select('is_admin')
+                    .or(`auth_id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`)
+                    .maybeSingle();
+                if (userError) throw userError;
+                if (!u?.is_admin) {
+                    await dbClient.auth.signOut();
+                    throw new Error('This account is not marked as an administrator in the users table.');
+                }
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('admin-dashboard').classList.remove('hidden');
+                switchTab('dashboard', document.querySelector('.nav-btn'));
+                return true;
+            } catch (error) {
+                console.error('Admin authentication error:', error);
+                const msg = document.getElementById('admin-login-error');
+                if (msg) msg.textContent = error.message || 'Could not verify admin access.';
+                return false;
             }
         }
         window.onload = checkAdmin;
 
         async function adminLogin() {
-            const email = document.getElementById('admin-email').value;
+            const email = document.getElementById('admin-email').value.trim();
             const pass = document.getElementById('admin-password').value;
+            const msg = document.getElementById('admin-login-error');
+            if (msg) msg.textContent = '';
+            if (!email || !pass) { if (msg) msg.textContent = 'Enter your email and password.'; return; }
             const { error } = await dbClient.auth.signInWithPassword({ email, password: pass });
-            if (error) alert(error.message); else { await checkAdmin(); }
+            if (error) { if (msg) msg.textContent = error.message; return; }
+            await checkAdmin();
         }
         async function adminLogout() { await dbClient.auth.signOut(); location.reload(); }
         async function fetchApi(action, data={}) {
