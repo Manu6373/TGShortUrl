@@ -188,7 +188,7 @@
             </div>
         </div>
 
-        <nav class="fixed bottom-0 left-0 w-full bg-[#0f172a]/95 backdrop-blur-xl border-t border-slate-800 z-40 pb-safe">
+        <nav id="app-bottom-nav" class="fixed bottom-0 left-0 w-full bg-[#0f172a]/95 backdrop-blur-xl border-t border-slate-800 z-40 pb-safe">
             <div class="flex justify-between items-end px-2 pt-2 pb-3">
                 <button class="nav-btn nav-item active flex flex-col items-center w-1/5" data-target="page-home"><div class="nav-icon w-10 h-10 rounded-xl flex items-center justify-center text-lg mb-1"><i class="fa-solid fa-house"></i></div><span class="text-[10px] font-medium tracking-wide">Home</span></button>
                 <button class="nav-btn nav-item flex flex-col items-center w-1/5" data-target="page-links"><div class="nav-icon w-10 h-10 rounded-xl flex items-center justify-center text-lg mb-1"><i class="fa-solid fa-link"></i></div><span class="text-[10px] font-medium tracking-wide">Links</span></button>
@@ -200,7 +200,7 @@
     </div>
 
     <!-- ADVANCED AD VIEWING UI (MONETAG ONLY) -->
-    <div id="ui-ad-viewer" class="hidden min-h-screen flex flex-col items-center justify-center p-6 z-50">
+    <div id="ui-ad-viewer" class="hidden fixed inset-0 min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-6 z-[100]">
         <div class="glass-panel w-full max-w-sm p-8 text-center shadow-2xl relative flex flex-col">
             <h2 class="text-2xl font-bold mb-4 text-white" id="ad-step-title">Please Wait...</h2>
             <div id="link-info-container" class="mb-6 text-sm text-slate-300">
@@ -293,6 +293,9 @@
 
                 if (startParam && startParam.startsWith('link_')) {
                     window.currentShortId = startParam.replace('link_', '');
+                    // Short-link unlock is a standalone screen: never show the app tabs underneath.
+                    document.getElementById('ui-main-app').classList.add('hidden');
+                    document.getElementById('app-bottom-nav').classList.add('hidden');
                     document.getElementById('ui-loading').classList.add('hidden');
                     document.getElementById('ui-ad-viewer').classList.remove('hidden');
                     setupAdStep();
@@ -300,7 +303,8 @@
                 }
 
                 if (session) {
-                    const { data: u } = await dbClient.from('users').select('*').eq('auth_id', session.user.id).maybeSingle();
+                    const { data: u, error: userLookupError } = await dbClient.from('users').select('*').or(`auth_id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`).maybeSingle();
+                    if (userLookupError) throw userLookupError;
                     if (!u || u.is_blocked) throw new Error("Blocked or not found");
                     currentUserData = u;
                     document.getElementById('ui-loading').classList.add('hidden');
