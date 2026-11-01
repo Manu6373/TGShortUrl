@@ -55,9 +55,10 @@ export default async function handler(req, res) {
     if(action==='settings') {const r=await db.from('settings').select('*').limit(1).maybeSingle();if(r.error)throw r.error;return res.json({data:r.data})}
     
     if(action==='saveSettings') {
-        const allowed=['cpm','refer_percent','refer_reward_inr','min_withdraw_inr','ad_timer','ip_restrict_hours','monetag_reward_script','monetag_reward_func','telegram_channel_url','payment_methods','withdrawals_enabled','maintenance_mode'];
+        const allowed=['cpm','refer_percent','refer_reward_inr','min_withdraw','ad_timer','ip_restrict_hours','monetag_reward_script','monetag_reward_func','telegram_channel_url','payment_methods','withdrawals_enabled','maintenance_mode'];
         const clean={};
         for(const key of allowed) if(Object.prototype.hasOwnProperty.call(data||{},key)) clean[key]=data[key];
+        if (!Object.keys(clean).length) throw Error('No settings supplied');
         const existing=await db.from('settings').select('id').limit(1).maybeSingle();
         if(existing.error)throw existing.error;
         const r = existing.data ? await db.from('settings').update(clean).eq('id',existing.data.id) : await db.from('settings').insert(clean);
