@@ -99,6 +99,19 @@ export default async function handler(req, res) {
     await db.from('links').update({ clicks: (Number(link.clicks) || 0) + 1 }).eq('id', link.id);
 
     if (grantReward) {
+      // Write the earning ledger first. The monthly report reads this table.
+      // Do not send reward_claim_id here: it is optional and may have a schema-specific type/FK.
+      const { error: earningLogError } = await db.from('earning_logs').insert({
+        user_id: owner.id,
+        amount: earnAmount,
+        source: 'link_earning',
+        referred_user_id: null
+      });
+      if (earningLogError) {
+        console.error('Earning log insert failed:', earningLogError);
+        return res.status(500).json({ error: 'Could not record earning history.', details: earningLogError.message });
+      }
+
       await db.from('users').update({
         balance: (Number(owner.balance) || 0) + earnAmount,
         today_earnings: (Number(owner.today_earnings) || 0) + earnAmount,
@@ -108,13 +121,6 @@ export default async function handler(req, res) {
       }).eq('id', owner.id);
 
       await db.from('links').update({ earnings: (Number(link.earnings) || 0) + earnAmount }).eq('id', link.id);
-      await db.from('earning_logs').insert({
-        user_id: owner.id,
-        amount: earnAmount,
-        source: 'link_earning',
-        referred_user_id: null,
-        reward_claim_id: claimRow?.id || null
-      });
 
       // LIFETIME PERCENTAGE REFERRAL COMMISSION
       if (owner.telegram_id) {
@@ -138,8 +144,7 @@ export default async function handler(req, res) {
                 user_id: referrer.id,
                 amount: commissionAmount,
                 source: 'referral_commission',
-                referred_user_id: owner.id,
-                reward_claim_id: claimRow?.id || null
+                referred_user_id: owner.id
               });
 
               if (!commissionLogError) {
