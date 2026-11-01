@@ -170,7 +170,11 @@
                     </div>
                     <div class="mb-4"><input type="text" id="withdraw-details" placeholder="Payment Details (UPI ID / Wallet Number)" class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-3 text-sm"></div>
                     <div class="mb-6"><input type="url" id="withdraw-telegram" placeholder="Your Telegram Channel/Group Link (Required)" class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-3 text-sm"></div>
-                    <button onclick="submitWithdrawal()" class="w-full success-gradient text-white font-bold py-4 rounded-xl shadow-lg">Submit Request</button>
+                    <button id="withdraw-submit-btn" onclick="submitWithdrawal()" class="w-full success-gradient text-white font-bold py-4 rounded-xl shadow-lg">Submit Request</button>
+                    <div id="withdrawal-weekend-status" class="hidden w-full rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-center">
+                        <div class="font-bold text-emerald-300"><i class="fa-solid fa-calendar-check mr-2"></i>WITHDRAWALS LIVE</div>
+                        <div class="text-sm text-slate-200 mt-1">Withdrawals are processed every Sunday.</div>
+                    </div>
                 </div>
                 <h3 class="text-lg font-bold text-white mb-3"><i class="fa-solid fa-clock-rotate-left text-indigo-400 mr-2"></i>Payout History</h3>
                 <div id="withdrawal-history-list" class="space-y-3"></div>
@@ -458,12 +462,18 @@
             
             loadDashboardReports();
 
-            const minUsd = Number(adminSettings.min_withdraw ?? 5);
+            const minInr = Number(adminSettings.min_withdraw_inr ?? 50);
             const refPercent = Number(adminSettings.refer_percent ?? 1);
-            document.getElementById('min-withdraw-display').innerText = `$${minUsd.toFixed(4)}`; 
+            document.getElementById('min-withdraw-display').innerText = `$${(minInr / 85).toFixed(4)}`; 
             document.getElementById('refer-commission').innerText = refPercent;
             document.getElementById('referral-link-display').innerText = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=ref_${u.telegram_id}`;
             
+            const withdrawalsEnabled = adminSettings.withdrawals_enabled !== false;
+            const withdrawSubmitBtn = document.getElementById('withdraw-submit-btn');
+            const weekendStatus = document.getElementById('withdrawal-weekend-status');
+            withdrawSubmitBtn.classList.toggle('hidden', !withdrawalsEnabled);
+            weekendStatus.classList.toggle('hidden', withdrawalsEnabled);
+
             const methods = (adminSettings.payment_methods || "UPI").split(',');
             const sel = document.getElementById('withdraw-method');
             sel.innerHTML = '<option value="">Choose Method...</option>';
@@ -577,7 +587,7 @@
             
             if(!method || !details || !tgLink) return alert("All fields including Telegram Link are required.");
             
-            const minUsd = Number(adminSettings.min_withdraw ?? 5);
+            const minInr = Number(adminSettings.min_withdraw_inr ?? 50);
             
             try {
                 // Secure Transactional Request via RPC
@@ -586,7 +596,7 @@
                     p_method: method,
                     p_details: details,
                     p_tg_link: tgLink,
-                    p_min_inr: minUsd * 85
+                    p_min_inr: minInr
                 });
 
                 if (error) throw error;
@@ -687,6 +697,7 @@
 
             try {
                 await Promise.resolve(fn());
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Verifying Ad...';
                 await handleAdSuccess();
             } catch (error) {
                 btn.disabled = false; btn.innerHTML = 'Try Again';
