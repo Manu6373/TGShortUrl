@@ -19,8 +19,8 @@ export default async function handler(req, res) {
     try {
         const firstName = new_user?.first_name || 'A new user';
         
-        // Formatted message for the referrer updating them on the ₹5 INR rule
-        const messageText = `🎉 <b>New Referral Joined!</b>\n\n👤 <b>${firstName}</b> successfully registered on TGShortUrl using your link.\n\nYou will earn ₹5 INR once they complete their first unlocked link!`;
+        // Notify the referrer that a new user joined
+        const messageText = `🎉 <b>New Referral Joined!</b>\n\n👤 <b>${firstName}</b> successfully registered on TGShortUrl using your link.\n\nYou will earn a lifetime commission from their eligible earnings.`;
         
         // Send message via Telegram Bot API
         const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
