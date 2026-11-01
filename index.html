@@ -278,22 +278,41 @@
             } catch (error) { console.error("Settings loading error:", error); }
         }
 
+        async function loadAuthenticatedProfile(session) {
+            if (!session?.user?.id) throw new Error('Login session is missing. Please sign in again.');
+            const authId = session.user.id;
+            // auth_id is the active profile key in this database. Try the legacy
+            // auth_user_id column only if the primary lookup returns no row.
+            let { data: u, error } = await dbClient
+                .from('users').select('*').eq('auth_id', authId).maybeSingle();
+            if (error) throw new Error('Could not load your profile: ' + error.message);
+            if (!u) {
+                const legacy = await dbClient
+                    .from('users').select('*').eq('auth_user_id', authId).maybeSingle();
+                if (legacy.error) throw new Error('Could not load your profile: ' + legacy.error.message);
+                u = legacy.data;
+            }
+            if (!u) throw new Error('Your login succeeded, but no TGShortUrl profile is linked to this account. Contact admin.');
+            if (u.is_blocked) throw new Error('This account is blocked. Contact admin.');
+            currentUserData = u;
+            document.getElementById('ui-loading').classList.add('hidden');
+            document.getElementById('ui-auth').classList.add('hidden');
+            document.getElementById('ui-main-app').classList.remove('hidden');
+            setupDashboard();
+        }
+
         async function initApp() {
             try {
                 await loadAdminSettings();
-
                 if (adminSettings.maintenance_mode) {
                     document.getElementById('ui-loading').classList.add('hidden');
                     document.getElementById('ui-maintenance').classList.remove('hidden');
                     return;
                 }
 
-                const { data: { session } } = await dbClient.auth.getSession();
-                let startParam = tg.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get('link');
-
+                const startParam = tg.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get('link');
                 if (startParam && startParam.startsWith('link_')) {
                     window.currentShortId = startParam.replace('link_', '');
-                    // Short-link unlock is a standalone screen: never show the app tabs underneath.
                     document.getElementById('ui-main-app').classList.add('hidden');
                     document.getElementById('app-bottom-nav').classList.add('hidden');
                     document.getElementById('ui-loading').classList.add('hidden');
@@ -302,23 +321,19 @@
                     return;
                 }
 
+                const { data: { session }, error } = await dbClient.auth.getSession();
+                if (error) throw error;
                 if (session) {
-                    const { data: u, error: userLookupError } = await dbClient.from('users').select('*').or(`auth_id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`).maybeSingle();
-                    if (userLookupError) throw userLookupError;
-                    if (!u || u.is_blocked) throw new Error("Blocked or not found");
-                    currentUserData = u;
-                    document.getElementById('ui-loading').classList.add('hidden');
-                    document.getElementById('ui-main-app').classList.remove('hidden');
-                    setupDashboard();
+                    await loadAuthenticatedProfile(session);
                 } else {
                     document.getElementById('ui-loading').classList.add('hidden');
                     document.getElementById('ui-auth').classList.remove('hidden');
                 }
             } catch (error) {
-                setTimeout(() => {
-                    document.getElementById('ui-loading').classList.add('hidden');
-                    document.getElementById('ui-auth').classList.remove('hidden');
-                }, 1000);
+                console.error('TGShortUrl startup/login error:', error);
+                document.getElementById('ui-loading').classList.add('hidden');
+                document.getElementById('ui-auth').classList.remove('hidden');
+                alert('Login/session error: ' + (error?.message || 'Unknown error'));
             }
         }
 
@@ -337,29 +352,61 @@
             e.preventDefault();
             const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
+            const button = document.getElementById('btn-auth');
+            button.disabled = true;
+            button.innerText = isLoginMode ? 'Logging in...' : 'Creating account...';
             try {
+                let authData;
                 if (isLoginMode) {
-                    const { error } = await dbClient.auth.signInWithPassword({ email, password });
-                    if (error) throw error;
+                    const result = await dbClient.auth.signInWithPassword({ email, password });
+                    if (result.error) throw result.error;
+                    authData = result.data;
                 } else {
-                    const { data, error } = await dbClient.auth.signUp({ email, password });
-                    if (error) throw error;
-                    if(data.user) {
-                        const tgUser = tg.initDataUnsafe?.user || {};
-                        await dbClient.from('users').insert([{
-                            auth_id: data.user.id, email: email, telegram_id: tgUser.id || Date.now(),
-                            first_name: tgUser.first_name || 'User', username: tgUser.username || ''
+                    const result = await dbClient.auth.signUp({ email, password });
+                    if (result.error) throw result.error;
+                    authData = result.data;
+                    if (!authData.session) {
+                        throw new Error('Registration successful. Please confirm your email, then log in.');
+                    }
+                    const tgUser = tg.initDataUnsafe?.user || {};
+                    const { data: existing } = await dbClient.from('users').select('id')
+                        .eq('auth_id', authData.user.id).maybeSingle();
+                    if (!existing) {
+                        const { error: insertError } = await dbClient.from('users').insert([{
+                            auth_id: authData.user.id,
+                            email,
+                            telegram_id: tgUser.id || Date.now(),
+                            first_name: tgUser.first_name || email.split('@')[0] || 'User',
+                            username: tgUser.username || ''
                         }]);
-                        let startParam = tg.initDataUnsafe?.start_param;
-                        if (startParam && startParam.startsWith('ref_')) {
-                            const referrerId = parseInt(startParam.replace('ref_', ''), 10);
+                        if (insertError) throw new Error('Account created but profile creation failed: ' + insertError.message);
+                    }
+                    const startParam = tg.initDataUnsafe?.start_param;
+                    if (startParam && startParam.startsWith('ref_') && tgUser.id) {
+                        const referrerId = parseInt(startParam.replace('ref_', ''), 10);
+                        if (Number.isFinite(referrerId)) {
                             await dbClient.from('referrals').insert([{ referrer_tg_id: referrerId, referred_tg_id: tgUser.id }]);
-                            fetch(`${VERCEL_API_URL}/process_referral`, { method: 'POST', body: JSON.stringify({ referrer_id: referrerId, new_user: tgUser }) });
+                            fetch(`${VERCEL_API_URL}/process_referral`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ referrer_id: referrerId, new_user: tgUser })
+                            }).catch(err => console.warn('Referral notification failed:', err));
                         }
                     }
                 }
-                location.reload();
-            } catch(error) { alert(error.message); }
+
+                // Do not reload the Telegram WebView after login. Render the profile
+                // directly from the newly-created Supabase session.
+                const { data: sessionData, error: sessionError } = await dbClient.auth.getSession();
+                if (sessionError) throw sessionError;
+                await loadAuthenticatedProfile(sessionData.session || authData.session);
+            } catch (error) {
+                console.error('TGShortUrl authentication error:', error);
+                alert(error?.message || 'Login failed. Please try again.');
+            } finally {
+                button.disabled = false;
+                button.innerText = isLoginMode ? 'Login' : 'Register';
+            }
         }
         async function handleLogout() { await dbClient.auth.signOut(); location.reload(); }
 
