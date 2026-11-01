@@ -111,12 +111,21 @@
                     <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Total Clicks</div><div class="text-2xl font-bold text-white mt-1" id="stat-total-clicks">0</div></div>
                 </div>
                 
-                <!-- TOP LINKS UI -->
                 <div class="mx-4 mb-6">
-                    <h3 class="text-sm font-bold text-white mb-3 uppercase tracking-wider"><i class="fa-solid fa-chart-line text-indigo-400 mr-2"></i> Top Performing Links</h3>
-                    <div id="top-links-list" class="space-y-3">
-                        <div class="text-slate-500 text-sm text-center py-4">Loading stats...</div>
+                    <h3 class="text-sm font-bold text-white mb-3 uppercase tracking-wider"><i class="fa-solid fa-chart-column text-indigo-400 mr-2"></i>Today's Report</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1">Earnings</div><div id="report-today-earn" class="text-xl font-bold text-emerald-400">0.0000</div></div>
+                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1">Views</div><div id="report-today-views" class="text-xl font-bold text-white">0</div></div>
                     </div>
+                </div>
+                <div class="mx-4 mb-6">
+                    <h3 class="text-sm font-bold text-white mb-3 uppercase tracking-wider"><i class="fa-solid fa-calendar-days text-indigo-400 mr-2"></i>This Month's Report</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1">Earnings</div><div id="report-month-earn" class="text-xl font-bold text-emerald-400">0.0000</div></div>
+                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1">Views</div><div id="report-month-views" class="text-xl font-bold text-white">0</div></div>
+                    </div>
+                </div>
+            </div>
                 </div>
             </div>
 
@@ -132,7 +141,7 @@
             <div id="page-refer" class="page-content hidden mx-4 mb-6 fade-in">
                 <div class="glass-panel p-6 text-center mb-6 relative overflow-hidden">
                     <h2 class="text-2xl font-bold text-white mb-2">Invite Friends</h2>
-                    <p class="text-sm text-slate-300 mb-6">Earn <span class="text-emerald-400 font-bold bg-emerald-500/10 px-2 rounded">₹<span id="refer-commission">5</span> INR</span> instantly when your referral completes their first link!</p>
+                    <p class="text-sm text-slate-300 mb-6">Earn a lifetime <span class="text-emerald-400 font-bold bg-emerald-500/10 px-2 rounded"><span id="refer-commission">1</span>%</span> commission from your friends' earnings!</p>
                     <div class="bg-slate-900 rounded-xl p-2 flex items-center justify-between border border-slate-700">
                         <span id="referral-link-display" class="text-xs font-mono text-slate-300 truncate px-3 w-[75%]">Generating...</span>
                         <button id="btn-copy-referral" class="primary-gradient text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-lg">Copy</button>
@@ -356,7 +365,7 @@
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             document.querySelector(`.nav-btn[data-target="${pageId}"]`).classList.add('active');
             
-            if(pageId === 'page-home') loadTopLinks();
+            if(pageId === 'page-home') loadDashboardReports();
             if(pageId === 'page-links') loadLinks();
             if(pageId === 'page-refer') fetchReferralDetails();
             if(pageId === 'page-wallet') loadWithdrawalHistory();
@@ -369,18 +378,19 @@
             document.getElementById('profile-name').innerText = u.first_name;
             document.getElementById('profile-id').innerText = `ID: ${u.telegram_id || 'N/A'}`;
             
-            document.getElementById('header-balance').innerHTML = formatCurrency(u.balance);
+            document.getElementById('header-balance').innerText = Number(u.balance || 0).toFixed(4);
             document.getElementById('wallet-balance-page').innerHTML = formatCurrency(u.balance, 'large');
             
-            document.getElementById('stat-today-earn').innerHTML = formatCurrencyLeft(u.today_earnings);
+            document.getElementById('stat-today-earn').innerText = Number(u.today_earnings || 0).toFixed(4);
             document.getElementById('stat-today-views').innerText = u.today_clicks || 0;
-            document.getElementById('stat-avg-cpm').innerHTML = formatCurrencyLeft(adminSettings.cpm);
+            document.getElementById('stat-avg-cpm').innerText = Number(adminSettings.cpm || 0).toFixed(4);
             document.getElementById('stat-total-clicks').innerText = u.total_clicks || 0;
+            loadDashboardReports();
 
             const minInr = Number(adminSettings.min_withdraw_inr ?? 50);
-            const refInr = Number(adminSettings.refer_reward_inr ?? 5);
+            const refPercent = Number(adminSettings.refer_percent ?? 1);
             document.getElementById('min-withdraw-display').innerText = `₹${minInr.toFixed(2)} INR`;
-            document.getElementById('refer-commission').innerText = refInr;
+            document.getElementById('refer-commission').innerText = refPercent;
             document.getElementById('referral-link-display').innerText = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=ref_${u.telegram_id}`;
             
             const methods = (adminSettings.payment_methods || "UPI").split(',');
@@ -404,13 +414,30 @@
             loadTopLinks();
         }
 
-        async function loadTopLinks() {
-            const { data } = await dbClient.from('links').select('short_id, clicks, earnings').eq('user_id', currentUserData.id).order('clicks', { ascending: false }).limit(10);
-            const list = document.getElementById('top-links-list'); list.innerHTML = '';
-            if(!data || !data.length) list.innerHTML = '<div class="text-slate-500 text-center py-5">No links yet.</div>';
-            data?.forEach((l, idx) => {
-                list.innerHTML += `<div class="glass-panel p-3 flex justify-between items-center"><div class="flex items-center"><div class="w-6 h-6 rounded-full bg-slate-800 text-xs font-bold flex items-center justify-center mr-3 text-slate-400">${idx+1}</div><div class="text-indigo-400 text-sm font-mono truncate w-24">${l.short_id}</div></div><div class="text-right"><div class="text-xs text-white"><i class="fa-solid fa-eye text-slate-500"></i> ${l.clicks||0}</div></div></div>`;
-            });
+        async function loadDashboardReports() {
+            const u = currentUserData || {};
+            document.getElementById('report-today-earn').innerText = Number(u.today_earnings || 0).toFixed(4);
+            document.getElementById('report-today-views').innerText = Number(u.today_clicks || 0);
+            const now = new Date();
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+            const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+            const { data: logs, error } = await dbClient.from('earning_logs').select('amount,source,created_at').eq('user_id', u.id).gte('created_at', monthStart).lt('created_at', nextMonth);
+            if (error) {
+                document.getElementById('report-month-earn').innerText = '—';
+            } else {
+                const monthEarn = (logs || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
+                document.getElementById('report-month-earn').innerText = monthEarn.toFixed(4);
+            }
+            const { count } = await dbClient.from('click_logs').select('id', { count: 'exact', head: true }).gte('created_at', monthStart).lt('created_at', nextMonth);
+            // click_logs records valid reward attempts platform-wide; use this user's owned-link click count from logs via link IDs.
+            const { data: userLinks } = await dbClient.from('links').select('id').eq('user_id', u.id);
+            const linkIds = (userLinks || []).map(x => x.id);
+            let monthlyViews = 0;
+            if (linkIds.length) {
+                const { count: ownedCount } = await dbClient.from('click_logs').select('id', { count: 'exact', head: true }).in('link_id', linkIds).gte('created_at', monthStart).lt('created_at', nextMonth);
+                monthlyViews = ownedCount || 0;
+            }
+            document.getElementById('report-month-views').innerText = monthlyViews;
         }
 
         async function loadLinks() {
@@ -478,20 +505,28 @@
         }
 
         async function fetchReferralDetails() {
-            const { data: referrals } = await dbClient.from('referrals').select('reward_paid').eq('referrer_tg_id', currentUserData.telegram_id);
-            const total = referrals?.length || 0;
-            const paid = referrals?.filter(r => r.reward_paid).length || 0;
-            
-            const refInr = Number(adminSettings.refer_reward_inr ?? 5);
-            const earnedInr = paid * refInr;
-            const earnedUsd = earnedInr / 85;
-
-            document.getElementById('ref-total-count').innerText = total;
-            document.getElementById('ref-total-earned').innerHTML = formatCurrencyLeft(earnedUsd);
-            
-            document.getElementById('btn-copy-referral').onclick = () => {
-                navigator.clipboard.writeText(document.getElementById('referral-link-display').innerText);
-                alert("Copied!");
+            const { data: referrals } = await dbClient.from('referrals').select('referred_tg_id,created_at').eq('referrer_tg_id', currentUserData.telegram_id).order('created_at', { ascending: false });
+            const rows = referrals || [];
+            document.getElementById('ref-total-count').innerText = rows.length;
+            const { data: commissionRows } = await dbClient.from('earning_logs').select('amount').eq('user_id', currentUserData.id).eq('source', 'referral_commission');
+            const totalEarned = (commissionRows || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
+            document.getElementById('ref-total-earned').innerHTML = `<div class="text-3xl font-bold text-emerald-400">$${totalEarned.toFixed(4)}</div>`;
+            const list = document.getElementById('referrals-list');
+            if (!rows.length) {
+                list.innerHTML = '<div class="glass-panel p-5 text-center text-slate-400">You have not referred anyone yet.</div>';
+            } else {
+                const ids = rows.map(r => r.referred_tg_id);
+                const { data: referredUsers } = await dbClient.from('users').select('telegram_id,first_name,username').in('telegram_id', ids);
+                const userMap = new Map((referredUsers || []).map(u => [String(u.telegram_id), u]));
+                list.innerHTML = rows.map(r => {
+                    const u = userMap.get(String(r.referred_tg_id)) || {};
+                    const label = u.first_name || u.username || `User ${r.referred_tg_id}`;
+                    return `<div class="glass-panel p-4 flex justify-between items-center"><div><div class="font-semibold text-white">${label}</div><div class="text-xs text-slate-500">${new Date(r.created_at).toLocaleDateString()}</div></div><div class="text-xs text-emerald-400 font-bold">Joined</div></div>`;
+                }).join('');
+            }
+            document.getElementById('btn-copy-referral').onclick = async () => {
+                try { await navigator.clipboard.writeText(document.getElementById('referral-link-display').innerText); alert('Copied!'); }
+                catch { alert('Please copy the referral link manually.'); }
             };
         }
 
