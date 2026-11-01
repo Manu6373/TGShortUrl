@@ -107,13 +107,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4 mx-4 mb-6">
-                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Today's Earnings</div><div class="text-xl font-bold text-emerald-400 mt-1" id="stat-today-earn"></div></div>
-                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Today's Views</div><div class="text-2xl font-bold text-white mt-1" id="stat-today-views">0</div></div>
-                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Average CPM</div><div class="text-xl font-bold text-indigo-400 mt-1" id="stat-avg-cpm"></div></div>
-                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Total Clicks</div><div class="text-2xl font-bold text-white mt-1" id="stat-total-clicks">0</div></div>
-                </div>
-                
+
                 <div class="mx-4 mb-6">
                     <h3 class="text-sm font-bold text-white mb-3 uppercase tracking-wider"><i class="fa-solid fa-chart-column text-indigo-400 mr-2"></i>Today's Report</h3>
                     <div class="grid grid-cols-2 gap-4">
@@ -166,7 +160,7 @@
                 <div class="glass-panel p-8 mb-6 text-center border border-emerald-500/30 bg-gradient-to-br from-emerald-900/20 to-transparent relative overflow-hidden">
                     <div class="text-sm text-emerald-200 mb-4 font-medium uppercase tracking-wider">Available Balance</div>
                     <div id="wallet-balance-page" class="mb-6"></div>
-                    <div class="text-xs text-slate-400">Minimum Withdrawal: <span id="min-withdraw-display" class="font-bold text-white">$0.5882 USD</span></div>
+                    <div class="text-xs text-slate-400">Minimum Withdrawal: <span id="min-withdraw-display" class="font-bold text-white">$0.5882</span></div>
                 </div>
                 <div class="glass-panel p-6 mb-6 border border-slate-700">
                     <h3 class="font-bold text-sm text-white mb-4 uppercase tracking-wider border-b border-slate-700 pb-2">Request Payout</h3>
@@ -188,9 +182,16 @@
                     <div id="profile-avatar" class="w-24 h-24 rounded-full primary-gradient mx-auto mb-4 flex items-center justify-center text-4xl font-bold text-white">?</div>
                     <h2 id="profile-name" class="text-2xl font-bold text-white">User</h2>
                     <p id="profile-id" class="text-xs text-indigo-300 font-mono mt-2">ID: ...</p>
-                    <a href="https://t.me/TGShortUrl" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 mt-5 px-5 py-3 rounded-xl bg-sky-500/10 border border-sky-400/30 text-sky-300 font-semibold text-sm"><i class="fa-brands fa-telegram text-lg"></i> Official Telegram Channel</a>
-                    <button onclick="handleLogout()" class="mt-4 bg-red-600/20 text-red-400 border border-red-500/30 px-6 py-2 rounded-lg font-bold text-sm hover:bg-red-600/40 transition">Logout</button>
                 </div>
+                <div class="glass-panel p-6 mb-6">
+                    <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Social Links</h3>
+                    <a href="https://t.me/TGShortUrl" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between py-4 text-white border-b border-slate-700/70">
+                        <span class="flex items-center gap-3"><i class="fa-brands fa-telegram text-sky-400 text-2xl"></i><span class="font-semibold">Official Channel</span></span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-slate-400"></i>
+                    </a>
+                </div>
+                <p class="text-center text-xs text-slate-500 mt-10 mb-6">Developed &amp; Maintained by <span class="font-bold text-indigo-400">TGShortUrl</span></p>
+                <div class="text-center"><button onclick="handleLogout()" class="mt-2 bg-red-600/20 text-red-400 border border-red-500/30 px-6 py-2 rounded-lg font-bold text-sm hover:bg-red-600/40 transition">Logout</button></div>
             </div>
         </div>
 
@@ -235,28 +236,25 @@
         tg.expand(); tg.setHeaderColor('#0f172a');
         let isLoginMode = true;
 
-        // Dual Currency Formatter
+        // Dollar-only formatter (no currency-name labels)
         function formatCurrency(usdAmount, size = 'normal') {
             const usd = Number(usdAmount || 0);
-            const inr = (usd * 85).toFixed(2);
             if (size === 'large') {
+                const inr = usd * 85;
                 return `<div class="flex flex-col items-center leading-tight mt-2">
-                            <span class="text-4xl font-bold text-white">$${usd.toFixed(4)} <span class="text-xl">USD</span></span>
-                            <span class="text-lg text-emerald-400 font-bold mt-1">₹${inr} <span class="text-sm">INR</span></span>
+                            <span class="text-4xl font-bold text-white">$${usd.toFixed(4)}</span>
+                            <span class="text-lg font-bold text-emerald-400 mt-2">₹${inr.toFixed(2)}</span>
                         </div>`;
             }
             return `<div class="flex flex-col text-right leading-tight">
-                        <span class="font-bold text-white">$${usd.toFixed(4)} USD</span>
-                        <span class="text-[10px] text-emerald-400 font-bold">₹${inr} INR</span>
+                        <span class="font-bold text-white">$${usd.toFixed(4)}</span>
                     </div>`;
         }
-        
+
         function formatCurrencyLeft(usdAmount) {
             const usd = Number(usdAmount || 0);
-            const inr = (usd * 85).toFixed(2);
             return `<div class="flex flex-col text-left leading-tight">
-                        <span class="font-bold text-white text-lg">$${usd.toFixed(4)} USD</span>
-                        <span class="text-xs text-emerald-400 font-bold mt-0.5">₹${inr} INR</span>
+                        <span class="font-bold text-white text-lg">$${usd.toFixed(4)}</span>
                     </div>`;
         }
 
@@ -457,15 +455,11 @@
             document.getElementById('header-balance').innerText = Number(u.balance || 0).toFixed(4);
             document.getElementById('wallet-balance-page').innerHTML = formatCurrency(u.balance, 'large');
             
-            document.getElementById('stat-today-earn').innerText = Number(u.today_earnings || 0).toFixed(4);
-            document.getElementById('stat-today-views').innerText = u.today_clicks || 0;
-            document.getElementById('stat-avg-cpm').innerText = Number(adminSettings.cpm || 0).toFixed(4);
-            document.getElementById('stat-total-clicks').innerText = u.total_clicks || 0;
             loadDashboardReports();
 
             const minInr = Number(adminSettings.min_withdraw_inr ?? 50);
             const refPercent = Number(adminSettings.refer_percent ?? 1);
-            document.getElementById('min-withdraw-display').innerText = `$${(minInr / 85).toFixed(4)} USD`; 
+            document.getElementById('min-withdraw-display').innerText = `$${(minInr / 85).toFixed(4)}`; 
             document.getElementById('refer-commission').innerText = refPercent;
             document.getElementById('referral-link-display').innerText = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=ref_${u.telegram_id}`;
             
@@ -724,4 +718,4 @@
         window.onload = initApp;
     </script>
 </body>
-</html>
+    </html>
