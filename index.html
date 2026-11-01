@@ -462,9 +462,11 @@
             
             loadDashboardReports();
 
-            const minInr = Number(adminSettings.min_withdraw_inr ?? 50);
+            // Admin Panel stores the minimum in USD under settings.min_withdraw.
+            // Convert to INR only when calling the withdrawal RPC.
+            const minWithdrawUsd = Number(adminSettings.min_withdraw ?? 5);
             const refPercent = Number(adminSettings.refer_percent ?? 1);
-            document.getElementById('min-withdraw-display').innerText = `$${(minInr / 85).toFixed(4)}`; 
+            document.getElementById('min-withdraw-display').innerText = `$${minWithdrawUsd.toFixed(2)}`; 
             document.getElementById('refer-commission').innerText = refPercent;
             document.getElementById('referral-link-display').innerText = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=ref_${u.telegram_id}`;
             
@@ -587,7 +589,9 @@
             
             if(!method || !details || !tgLink) return alert("All fields including Telegram Link are required.");
             
-            const minInr = Number(adminSettings.min_withdraw_inr ?? 50);
+            // request_withdrawal RPC expects the minimum in INR.
+            // Admin Panel stores it in USD, so convert using the app's ₹85/USD rate.
+            const minInr = Number(adminSettings.min_withdraw ?? 5) * 85;
             
             try {
                 // Secure Transactional Request via RPC
