@@ -273,7 +273,8 @@
 
         async function loadAdminSettings() {
             try {
-                const { data } = await dbClient.from('settings').select('*').limit(1).maybeSingle();
+                const { data, error } = await dbClient.from('settings').select('*').order('id', { ascending: true }).limit(1).maybeSingle();
+                if (error) throw error;
                 if (data) adminSettings = data;
                 
                 // Inject Monetag
@@ -718,4 +719,4 @@
         window.onload = initApp;
     </script>
 </body>
-    </html>
+</html>
