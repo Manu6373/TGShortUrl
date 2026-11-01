@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -65,9 +65,6 @@
                     <input type="password" id="auth-password" required minlength="6" class="w-full bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-xl focus:border-indigo-500 outline-none pr-10">
                     <button type="button" onclick="togglePassword()" class="absolute right-3 top-8 text-slate-400 hover:text-white"><i id="eye-icon" class="fa-solid fa-eye"></i></button>
                 </div>
-                <div class="text-right">
-                    <button type="button" onclick="handleReset()" class="text-xs text-indigo-400 hover:text-indigo-300">Forgot Password?</button>
-                </div>
                 <button type="submit" id="btn-auth" class="w-full primary-gradient text-white font-bold py-3.5 rounded-xl shadow-lg mt-2">Login</button>
             </form>
             
@@ -85,8 +82,8 @@
                 <div class="w-11 h-11 rounded-full primary-gradient flex items-center justify-center shadow-lg"><i class="fa-solid fa-bolt text-white text-lg"></i></div>
                 <div><h1 class="font-bold text-lg text-white leading-tight">TGShortUrl</h1><p class="text-[11px] text-indigo-300" id="user-greeting">Loading...</p></div>
             </div>
-            <div class="flex items-center space-x-2 bg-slate-800/80 py-2 px-4 rounded-full border border-slate-700 shadow-inner">
-                <i class="fa-solid fa-wallet text-emerald-400"></i><span class="font-bold text-sm text-emerald-400" id="header-balance">$0.00</span>
+            <div class="flex flex-col items-end space-y-1 bg-slate-800/80 py-1.5 px-3 rounded-xl border border-slate-700 shadow-inner text-right" id="header-balance">
+                <!-- Dual Currency Populated via JS -->
             </div>
         </header>
 
@@ -107,21 +104,19 @@
                     </div>
                 </div>
 
-                <!-- Banners can be optionally shown on the dashboard -->
-                <div id="dash-banner-container" class="mx-4 mb-6 flex justify-center hidden"></div>
-
                 <div class="grid grid-cols-2 gap-4 mx-4 mb-6">
-                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Today's Earnings</div><div class="text-2xl font-bold text-emerald-400" id="stat-today-earn">$0.0000</div></div>
-                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Today's Views</div><div class="text-2xl font-bold text-white" id="stat-today-views">0</div></div>
-                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Referral Earnings</div><div class="text-2xl font-bold text-rose-400" id="stat-ref-earn">$0.0000</div></div>
-                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Average CPM</div><div class="text-2xl font-bold text-indigo-400" id="stat-avg-cpm">$0.0000</div></div>
+                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Today's Earnings</div><div class="text-emerald-400" id="stat-today-earn"></div></div>
+                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Today's Views</div><div class="text-2xl font-bold text-white mt-1" id="stat-today-views">0</div></div>
+                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Average CPM</div><div class="text-indigo-400" id="stat-avg-cpm"></div></div>
+                    <div class="glass-panel p-5 text-center relative overflow-hidden"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Total Clicks</div><div class="text-2xl font-bold text-white mt-1" id="stat-total-clicks">0</div></div>
                 </div>
-                <div class="mx-4 mb-3 px-2 text-indigo-300 text-sm font-bold uppercase tracking-wider">This Month's Report</div>
-                <div class="grid grid-cols-2 gap-4 mx-4 mb-6">
-                    <div class="glass-panel p-5 text-center"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Monthly Views</div><div class="text-2xl font-bold text-white" id="stat-month-views">0</div></div>
-                    <div class="glass-panel p-5 text-center"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Monthly Earnings</div><div class="text-2xl font-bold text-emerald-400" id="stat-month-earn">$0.0000</div></div>
-                    <div class="glass-panel p-5 text-center"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Monthly Referral Earnings</div><div class="text-2xl font-bold text-rose-400" id="stat-month-ref">$0.0000</div></div>
-                    <div class="glass-panel p-5 text-center"><div class="text-slate-400 text-xs mb-1 uppercase font-semibold">Monthly Average CPM</div><div class="text-2xl font-bold text-indigo-400" id="stat-month-cpm">$0.0000</div></div>
+                
+                <!-- TOP LINKS UI -->
+                <div class="mx-4 mb-6">
+                    <h3 class="text-sm font-bold text-white mb-3 uppercase tracking-wider"><i class="fa-solid fa-chart-line text-indigo-400 mr-2"></i> Top Performing Links</h3>
+                    <div id="top-links-list" class="space-y-3">
+                        <div class="text-slate-500 text-sm text-center py-4">Loading stats...</div>
+                    </div>
                 </div>
             </div>
 
@@ -137,7 +132,7 @@
             <div id="page-refer" class="page-content hidden mx-4 mb-6 fade-in">
                 <div class="glass-panel p-6 text-center mb-6 relative overflow-hidden">
                     <h2 class="text-2xl font-bold text-white mb-2">Invite Friends</h2>
-                    <p class="text-sm text-slate-300 mb-6">Earn a lifetime <span class="text-emerald-400 font-bold bg-emerald-500/10 px-2 rounded" id="refer-commission">10%</span> commission from your friends' earnings!</p>
+                    <p class="text-sm text-slate-300 mb-6">Earn <span class="text-emerald-400 font-bold bg-emerald-500/10 px-2 rounded">₹<span id="refer-commission">5</span> INR</span> instantly when your referral completes their first link!</p>
                     <div class="bg-slate-900 rounded-xl p-2 flex items-center justify-between border border-slate-700">
                         <span id="referral-link-display" class="text-xs font-mono text-slate-300 truncate px-3 w-[75%]">Generating...</span>
                         <button id="btn-copy-referral" class="primary-gradient text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-lg">Copy</button>
@@ -145,7 +140,7 @@
                 </div>
                 <div class="grid grid-cols-2 gap-4 mb-5">
                     <div class="glass-panel p-5 text-center"><div class="text-slate-400 text-xs font-bold uppercase mb-2">Total Referrals</div><div id="ref-total-count" class="text-3xl font-bold text-white">0</div></div>
-                    <div class="glass-panel p-5 text-center border border-emerald-500/20"><div class="text-emerald-400 text-xs font-bold uppercase mb-2">Total Earned</div><div id="ref-total-earned" class="text-3xl font-bold text-emerald-400">$0.00</div></div>
+                    <div class="glass-panel p-5 text-center border border-emerald-500/20"><div class="text-emerald-400 text-xs font-bold uppercase mb-2">Total Earned</div><div id="ref-total-earned"></div></div>
                 </div>
                 <h3 class="text-lg font-bold text-white mb-3"><i class="fa-solid fa-list-check text-indigo-400 mr-2"></i>Referrals List</h3>
                 <div id="referrals-list" class="space-y-3"></div>
@@ -155,17 +150,18 @@
             <div id="page-wallet" class="page-content hidden mx-4 mb-6 fade-in">
                 <h2 class="text-xl font-bold mb-4 text-white"><i class="fa-solid fa-wallet text-emerald-400 mr-2"></i> My Wallet</h2>
                 <div class="glass-panel p-8 mb-6 text-center border border-emerald-500/30 bg-gradient-to-br from-emerald-900/20 to-transparent relative overflow-hidden">
-                    <div class="text-sm text-emerald-200 mb-2 font-medium">Available Balance</div>
-                    <div class="text-5xl font-bold text-white mb-2" id="wallet-balance-page">$0.00</div>
-                    <div class="text-xs text-slate-400 mb-6">Minimum Withdrawal: <span id="min-withdraw-display" class="font-bold text-white">$5.00</span></div>
+                    <div class="text-sm text-emerald-200 mb-4 font-medium uppercase tracking-wider">Available Balance</div>
+                    <div id="wallet-balance-page" class="mb-6"></div>
+                    <div class="text-xs text-slate-400">Minimum Withdrawal: <span id="min-withdraw-display" class="font-bold text-white">₹50 INR</span></div>
                 </div>
                 <div class="glass-panel p-6 mb-6 border border-slate-700">
                     <h3 class="font-bold text-sm text-white mb-4 uppercase tracking-wider border-b border-slate-700 pb-2">Request Payout</h3>
+                    <p class="text-xs text-amber-400 mb-4">You must withdraw your <b>entire available balance</b> at once. Weekly payments are processed every Sunday.</p>
                     <div class="mb-4">
                         <select id="withdraw-method" class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-3 text-sm"></select>
                     </div>
-                    <div class="mb-4"><input type="text" id="withdraw-details" placeholder="Payment Details (UPI/Wallet)" class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-3 text-sm"></div>
-                    <div class="mb-6"><input type="number" step="0.01" id="withdraw-amount" placeholder="Amount ($)" class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-3 text-sm"></div>
+                    <div class="mb-4"><input type="text" id="withdraw-details" placeholder="Payment Details (UPI ID / Wallet Number)" class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-3 text-sm"></div>
+                    <div class="mb-6"><input type="url" id="withdraw-telegram" placeholder="Your Telegram Channel/Group Link (Required)" class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-3 text-sm"></div>
                     <button onclick="submitWithdrawal()" class="w-full success-gradient text-white font-bold py-4 rounded-xl shadow-lg">Submit Request</button>
                 </div>
                 <h3 class="text-lg font-bold text-white mb-3"><i class="fa-solid fa-clock-rotate-left text-indigo-400 mr-2"></i>Payout History</h3>
@@ -179,19 +175,6 @@
                     <h2 id="profile-name" class="text-2xl font-bold text-white">User</h2>
                     <p id="profile-id" class="text-xs text-indigo-300 font-mono mt-2">ID: ...</p>
                     <button onclick="handleLogout()" class="mt-4 bg-red-600/20 text-red-400 border border-red-500/30 px-6 py-2 rounded-lg font-bold text-sm hover:bg-red-600/40 transition">Logout</button>
-                </div>
-                <div class="glass-panel p-6 mb-4 shadow-lg">
-                    <h3 class="text-xs font-bold text-slate-400 pb-3 uppercase tracking-wider">Social Links</h3>
-                    <a id="profile-telegram-link" href="https://t.me/TGShortUrl" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between p-3 rounded-xl hover:bg-slate-800/50">
-                        <span class="flex items-center"><i class="fa-brands fa-telegram text-sky-400 text-2xl w-8"></i><span class="text-sm text-slate-200 ml-3">Official Telegram Channel</span></span>
-                        <i class="fa-solid fa-arrow-up-right-from-square text-slate-500"></i>
-                    </a>
-                </div>
-                <div class="glass-panel p-2 mb-4 shadow-lg" id="links-container">
-                    <h3 class="text-xs font-bold text-slate-400 px-4 pt-4 pb-2 uppercase tracking-wider">Legal</h3>
-                    <a id="link-privacy" href="#" target="_blank" class="hidden items-center justify-between p-4 hover:bg-slate-800/50 rounded-xl transition">
-                        <div class="flex items-center"><i class="fa-solid fa-shield-halved w-8 text-slate-400"></i><span class="text-sm text-slate-300 ml-2">Privacy Policy</span></div>
-                    </a>
                 </div>
             </div>
         </div>
@@ -207,96 +190,66 @@
         </nav>
     </div>
 
-    <!-- ADVANCED AD VIEWING UI -->
+    <!-- ADVANCED AD VIEWING UI (MONETAG ONLY) -->
     <div id="ui-ad-viewer" class="hidden min-h-screen flex flex-col items-center justify-center p-6 z-50">
         <div class="glass-panel w-full max-w-sm p-8 text-center shadow-2xl relative flex flex-col">
-            
-            <!-- 1. Header -->
             <h2 class="text-2xl font-bold mb-4 text-white" id="ad-step-title">Please Wait...</h2>
-            
-            <!-- 2. Banner Advertisement -->
-            <div id="unlock-banner-container" class="mb-4 min-h-[50px] w-full flex justify-center items-center">
-                <!-- Banner Dynamically Injected Here -->
-            </div>
-            
-            <!-- 3. Link Information -->
             <div id="link-info-container" class="mb-6 text-sm text-slate-300">
                 <i class="fa-solid fa-link text-indigo-400 mr-2"></i><span id="ad-link-desc">Unlocking Secure Link...</span>
             </div>
-
-            <!-- 4. Rewarded Ad Countdown -->
             <div id="ad-timer-container" class="w-24 h-24 mx-auto rounded-full bg-slate-900 border-4 border-slate-700 flex items-center justify-center mb-6 relative shadow-inner">
-                <div class="absolute inset-0 rounded-full border-4 border-transparent ad-timer-circle hidden" id="ad-loader-ring"></div>
                 <span id="ad-timer-text" class="text-3xl font-bold text-white">5</span>
             </div>
-
-            <!-- 5. Watch Ad Button -->
             <button id="btn-watch-ad" disabled class="w-full bg-slate-800 text-slate-500 font-bold py-4 rounded-xl transition-all flex justify-center items-center shadow-lg mb-4"><span>Wait for Timer...</span></button>
-            
-            <!-- 6. Get Link Button -->
             <button id="btn-get-link" class="hidden w-full success-gradient text-white font-bold py-4 rounded-xl text-lg shadow-lg shadow-emerald-500/30"><i class="fa-solid fa-arrow-up-right-from-square mr-2"></i> GET LINK</button>
         </div>
     </div>
 
     <script>
-        // API CONFIGURATION
-        // DEBUG ERROR DETECTION
-window.addEventListener('error', function(e) {
-    console.error("JavaScript Error:", e.message);
-    document.getElementById('loading-text').innerText =
-        "JS Error: " + e.message;
-});
-
-window.addEventListener('unhandledrejection', function(e) {
-    console.error("Promise Error:", e.reason);
-    document.getElementById('loading-text').innerText =
-        "Connection Error: " + (e.reason?.message || e.reason);
-});
-        const SUPABASE_URL = 'https://nfjgjusfvuatjytfpfhf.supabase.co'; 
-        const SUPABASE_ANON_KEY = 'sb_publishable_aPROutC-ZbCxrxsJat8oFQ_2vI-eoaU';
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // Replace with env or actual URL
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
         const VERCEL_API_URL = '/api'; 
         const BOT_USERNAME = 'TGShortUrlBot'; 
         const APP_SHORT_NAME = 'tgshorturlvercel'; 
 
         let dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        // SUPABASE CONNECTION TEST
-(async function() {
-    try {
-        console.log("Testing Supabase connection...");
-
-        const { data, error } = await dbClient
-            .from('settings')
-            .select('*')
-            .limit(1);
-
-        if (error) throw error;
-
-        console.log("SUPABASE CONNECTION SUCCESS:", data);
-        document.getElementById('loading-text').innerText =
-            "Supabase Connected Successfully!";
-
-    } catch (error) {
-        console.error("SUPABASE CONNECTION FAILED:", error);
-
-        document.getElementById('loading-text').innerText =
-            "Supabase Error: " + error.message;
-    }
-})();
         let currentUserData = null;
         let adminSettings = {};
         
         const tg = window.Telegram.WebApp;
         tg.expand(); tg.setHeaderColor('#0f172a');
-        
         let isLoginMode = true;
 
-        // Script injector: preserve every SDK attribute (data-zone, data-sdk, etc.).
-        function injectHTMLWithScripts(htmlString, containerId) {
+        // Dual Currency Formatter
+        function formatCurrency(usdAmount, size = 'normal') {
+            const usd = Number(usdAmount || 0);
+            const inr = (usd * 85).toFixed(2);
+            if (size === 'large') {
+                return `<div class="flex flex-col items-center leading-tight mt-2">
+                            <span class="text-4xl font-bold text-white">$${usd.toFixed(4)} <span class="text-xl">USD</span></span>
+                            <span class="text-lg text-emerald-400 font-bold mt-1">₹${inr} <span class="text-sm">INR</span></span>
+                        </div>`;
+            }
+            return `<div class="flex flex-col text-right leading-tight">
+                        <span class="font-bold text-white">$${usd.toFixed(4)} USD</span>
+                        <span class="text-[10px] text-emerald-400 font-bold">₹${inr} INR</span>
+                    </div>`;
+        }
+        
+        function formatCurrencyLeft(usdAmount) {
+            const usd = Number(usdAmount || 0);
+            const inr = (usd * 85).toFixed(2);
+            return `<div class="flex flex-col text-left leading-tight">
+                        <span class="font-bold text-white text-lg">$${usd.toFixed(4)} USD</span>
+                        <span class="text-xs text-emerald-400 font-bold mt-0.5">₹${inr} INR</span>
+                    </div>`;
+        }
+
+        // Script injector
+        function injectHTMLWithScripts(htmlString) {
             if (!htmlString) return;
-            const target = containerId ? document.getElementById(containerId) : null;
             const holder = document.createElement('div');
             holder.innerHTML = htmlString;
-            if (target) target.innerHTML = holder.innerHTML;
             Array.from(holder.querySelectorAll('script')).forEach(oldScript => {
                 const script = document.createElement('script');
                 Array.from(oldScript.attributes).forEach(attr => script.setAttribute(attr.name, attr.value));
@@ -305,131 +258,62 @@ window.addEventListener('unhandledrejection', function(e) {
             });
         }
 
-        function loadRewardSdk(provider) {
-            if (provider === 'monetag') {
+        async function loadAdminSettings() {
+            try {
+                const { data } = await dbClient.from('settings').select('*').limit(1).maybeSingle();
+                if (data) adminSettings = data;
+                
+                // Inject Monetag
                 const code = adminSettings.monetag_reward_script || "<script src='//libtl.com/sdk.js' data-zone='12122788' data-sdk='show_12122788'><\/script>";
                 injectHTMLWithScripts(code);
-            } else if (provider === 'adsbitvex') {
-                const code = adminSettings.adsbitvex_reward_script || '<script src="https://sdk.adsbitvex.com/functions/v1/ad-script?appid=000540"><\/script>';
-                injectHTMLWithScripts(code);
-            }
+            } catch (error) { console.error("Settings loading error:", error); }
         }
 
-        async function loadAdminSettings() {
-    try {
-        const { data, error } = await dbClient
-            .from('settings')
-            .select('*')
-            .limit(1)
-            .maybeSingle();
-
-        if (error) throw error;
-
-        if (data) {
-            adminSettings = data;
-        }
-
-        // Load enabled providers. Both mode loads both SDKs for Monetag-first fallback.
-        const selectedProvider = adminSettings.active_reward_ad || 'monetag';
-        if (selectedProvider === 'both') {
-            loadRewardSdk('monetag');
-            loadRewardSdk('adsbitvex');
-        } else if (selectedProvider === 'monetag' || selectedProvider === 'adsbitvex') {
-            loadRewardSdk(selectedProvider);
-        }
-
-    } catch (error) {
-        console.error("Settings loading error:", error);
-        adminSettings = {};
-    }
-        }
         async function initApp() {
-    const loadingText = document.getElementById('loading-text');
+            try {
+                await loadAdminSettings();
 
-    try {
-        loadingText.innerText = "Connecting to Supabase...";
+                if (adminSettings.maintenance_mode) {
+                    document.getElementById('ui-loading').classList.add('hidden');
+                    document.getElementById('ui-maintenance').classList.remove('hidden');
+                    return;
+                }
 
-        await loadAdminSettings();
+                const { data: { session } } = await dbClient.auth.getSession();
+                let startParam = tg.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get('link');
 
-        if (adminSettings.maintenance_mode) {
-            document.getElementById('ui-loading').classList.add('hidden');
-            document.getElementById('ui-maintenance').classList.remove('hidden');
-            return;
-        }
+                if (startParam && startParam.startsWith('link_')) {
+                    window.currentShortId = startParam.replace('link_', '');
+                    document.getElementById('ui-loading').classList.add('hidden');
+                    document.getElementById('ui-ad-viewer').classList.remove('hidden');
+                    setupAdStep();
+                    return;
+                }
 
-        loadingText.innerText = "Checking authentication...";
-
-        const { data, error } = await dbClient.auth.getSession();
-
-        if (error) throw error;
-
-        const session = data.session;
-
-        let startParam = tg.initDataUnsafe?.start_param ||
-            new URLSearchParams(window.location.search).get('link');
-
-        if (startParam && startParam.startsWith('link_')) {
-            window.currentShortId = startParam.replace('link_', '');
-
-            document.getElementById('ui-loading').classList.add('hidden');
-            document.getElementById('ui-ad-viewer').classList.remove('hidden');
-
-            setupAdStep();
-            return;
-        }
-
-        if (session) {
-            loadingText.innerText = "Loading user account...";
-
-            const { data: u, error: userError } = await dbClient
-                .from('users')
-                .select('*')
-                .eq('auth_id', session.user.id)
-                .maybeSingle();
-
-            if (userError) throw userError;
-
-            if (!u) {
-                throw new Error("User profile not found in database.");
+                if (session) {
+                    const { data: u } = await dbClient.from('users').select('*').eq('auth_id', session.user.id).maybeSingle();
+                    if (!u || u.is_blocked) throw new Error("Blocked or not found");
+                    currentUserData = u;
+                    document.getElementById('ui-loading').classList.add('hidden');
+                    document.getElementById('ui-main-app').classList.remove('hidden');
+                    setupDashboard();
+                } else {
+                    document.getElementById('ui-loading').classList.add('hidden');
+                    document.getElementById('ui-auth').classList.remove('hidden');
+                }
+            } catch (error) {
+                setTimeout(() => {
+                    document.getElementById('ui-loading').classList.add('hidden');
+                    document.getElementById('ui-auth').classList.remove('hidden');
+                }, 1000);
             }
-
-            if (u.is_blocked) {
-                loadingText.innerText = "Account Blocked";
-                return;
-            }
-
-            currentUserData = u;
-
-            document.getElementById('ui-loading').classList.add('hidden');
-            document.getElementById('ui-main-app').classList.remove('hidden');
-
-            setupDashboard();
-
-        } else {
-            document.getElementById('ui-loading').classList.add('hidden');
-            document.getElementById('ui-auth').classList.remove('hidden');
         }
 
-    } catch (error) {
-        console.error("APP INITIALIZATION ERROR:", error);
-
-        loadingText.innerText = "Connection Error: " + error.message;
-
-        setTimeout(() => {
-            document.getElementById('ui-loading').classList.add('hidden');
-            document.getElementById('ui-auth').classList.remove('hidden');
-        }, 2000);
-    }
-        }
-
-        // AUTHENTICATION LOGIC
+        // AUTH & NAVIGATION
         function toggleAuthMode() {
             isLoginMode = !isLoginMode;
             document.getElementById('auth-title').innerText = isLoginMode ? "Welcome Back" : "Create Account";
-            document.getElementById('auth-subtitle').innerText = isLoginMode ? "Secure Login to TGShortUrl" : "Register to start earning";
             document.getElementById('btn-auth').innerText = isLoginMode ? "Login" : "Register";
-            document.getElementById('auth-switch-text').innerText = isLoginMode ? "Don't have an account?" : "Already have an account?";
-            document.getElementById('btn-switch-auth').innerText = isLoginMode ? "Register Now" : "Login Here";
         }
         function togglePassword() {
             const input = document.getElementById('auth-password'); const icon = document.getElementById('eye-icon');
@@ -440,14 +324,10 @@ window.addEventListener('unhandledrejection', function(e) {
             e.preventDefault();
             const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
-            const btn = document.getElementById('btn-auth');
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...'; btn.disabled = true;
-
             try {
                 if (isLoginMode) {
                     const { error } = await dbClient.auth.signInWithPassword({ email, password });
                     if (error) throw error;
-                    location.reload();
                 } else {
                     const { data, error } = await dbClient.auth.signUp({ email, password });
                     if (error) throw error;
@@ -457,26 +337,18 @@ window.addEventListener('unhandledrejection', function(e) {
                             auth_id: data.user.id, email: email, telegram_id: tgUser.id || Date.now(),
                             first_name: tgUser.first_name || 'User', username: tgUser.username || ''
                         }]);
-                        
                         let startParam = tg.initDataUnsafe?.start_param;
                         if (startParam && startParam.startsWith('ref_')) {
                             const referrerId = parseInt(startParam.replace('ref_', ''), 10);
                             await dbClient.from('referrals').insert([{ referrer_tg_id: referrerId, referred_tg_id: tgUser.id }]);
-                            fetch(`${VERCEL_API_URL}/process_referral`, {
-                                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ referrer_id: referrerId, new_user: tgUser })
-                            });
+                            fetch(`${VERCEL_API_URL}/process_referral`, { method: 'POST', body: JSON.stringify({ referrer_id: referrerId, new_user: tgUser }) });
                         }
-                        location.reload();
                     }
                 }
-            } catch(error) { alert(error.message); btn.innerHTML = isLoginMode ? "Login" : "Register"; btn.disabled = false; }
+                location.reload();
+            } catch(error) { alert(error.message); }
         }
         async function handleLogout() { await dbClient.auth.signOut(); location.reload(); }
-        async function handleReset() {
-            const email = prompt("Enter your email for password reset:");
-            if(email) { await dbClient.auth.resetPasswordForEmail(email); alert("Check your email for the reset link."); }
-        }
 
         function switchPage(pageId) {
             document.querySelectorAll('.page-content').forEach(el => el.classList.add('hidden'));
@@ -484,177 +356,152 @@ window.addEventListener('unhandledrejection', function(e) {
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             document.querySelector(`.nav-btn[data-target="${pageId}"]`).classList.add('active');
             
+            if(pageId === 'page-home') loadTopLinks();
             if(pageId === 'page-links') loadLinks();
             if(pageId === 'page-refer') fetchReferralDetails();
             if(pageId === 'page-wallet') loadWithdrawalHistory();
         }
 
-        async function loadPersonalMonthlyStats() {
-            const now = new Date();
-            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-            const nextMonth = new Date(now.getFullYear(), now.getMonth()+1, 1).toISOString();
-            const { data: links } = await dbClient.from('links').select('id').eq('user_id', currentUserData.id);
-            const linkIds = (links || []).map(x => x.id);
-            let monthlyViews = 0;
-            if (linkIds.length) {
-                const { count } = await dbClient.from('click_logs').select('id', {count:'exact', head:true}).in('link_id', linkIds).gte('created_at', monthStart).lt('created_at', nextMonth);
-                monthlyViews = count || 0;
-            }
-            const { data: logs, error } = await dbClient.from('earning_logs').select('amount,earning_type,created_at').eq('user_id', currentUserData.id).gte('created_at', monthStart).lt('created_at', nextMonth);
-            let monthEarn = 0, monthReferral = 0;
-            if (!error && logs) logs.forEach(row => { const amount = Number(row.amount)||0; if(row.earning_type === 'referral') monthReferral += amount; else monthEarn += amount; });
-            document.getElementById('stat-month-views').innerText = monthlyViews;
-            document.getElementById('stat-month-earn').innerText = `$${monthEarn.toFixed(4)}`;
-            document.getElementById('stat-month-ref').innerText = `$${monthReferral.toFixed(4)}`;
-            document.getElementById('stat-ref-earn').innerText = `$${monthReferral.toFixed(4)}`;
-            document.getElementById('stat-month-cpm').innerText = `$${(monthlyViews ? (monthEarn/monthlyViews*1000) : 0).toFixed(4)}`;
-        }
-
+        // DATA LOADING
         function setupDashboard() {
             const u = currentUserData;
             document.getElementById('user-greeting').innerText = `Hello, ${u.first_name}!`;
             document.getElementById('profile-name').innerText = u.first_name;
             document.getElementById('profile-id').innerText = `ID: ${u.telegram_id || 'N/A'}`;
-            const telegramLink = adminSettings.telegram_channel_url || 'https://t.me/TGShortUrl';
-            document.getElementById('profile-telegram-link').href = telegramLink;
-            document.getElementById('referral-link-display').innerText = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=ref_${u.telegram_id}`;
-            document.getElementById('header-balance').innerText = `$${parseFloat(u.balance || 0).toFixed(2)}`;
-            document.getElementById('wallet-balance-page').innerText = `$${parseFloat(u.balance || 0).toFixed(2)}`;
-            document.getElementById('stat-today-earn').innerText = `$${parseFloat(u.today_earnings || 0).toFixed(4)}`;
+            
+            document.getElementById('header-balance').innerHTML = formatCurrency(u.balance);
+            document.getElementById('wallet-balance-page').innerHTML = formatCurrency(u.balance, 'large');
+            
+            document.getElementById('stat-today-earn').innerHTML = formatCurrencyLeft(u.today_earnings);
             document.getElementById('stat-today-views').innerText = u.today_clicks || 0;
-            document.getElementById('stat-avg-cpm').innerText = `$${parseFloat(adminSettings.cpm || 0).toFixed(4)}`;
+            document.getElementById('stat-avg-cpm').innerHTML = formatCurrencyLeft(adminSettings.cpm);
+            document.getElementById('stat-total-clicks').innerText = u.total_clicks || 0;
 
-            // Apply live Admin Panel values to the Mini App UI.
-            const minimumWithdrawal = Number(adminSettings.min_withdraw ?? 5);
-            const referralPercent = Number(adminSettings.refer_percent ?? 10);
-            document.getElementById('min-withdraw-display').innerText = `$${minimumWithdrawal.toFixed(2)}`;
-            document.getElementById('refer-commission').innerText = `${referralPercent}%`;
-            document.getElementById('withdraw-amount').min = String(minimumWithdrawal);
-            loadPersonalMonthlyStats();
+            const minInr = Number(adminSettings.min_withdraw_inr ?? 50);
+            const refInr = Number(adminSettings.refer_reward_inr ?? 5);
+            document.getElementById('min-withdraw-display').innerText = `₹${minInr.toFixed(2)} INR`;
+            document.getElementById('refer-commission').innerText = refInr;
+            document.getElementById('referral-link-display').innerText = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=ref_${u.telegram_id}`;
             
             const methods = (adminSettings.payment_methods || "UPI").split(',');
-            const withdrawBtn = document.querySelector('button[onclick="submitWithdrawal()"]');
-            if (adminSettings.withdrawals_enabled === false) { withdrawBtn.disabled = true; withdrawBtn.innerText = 'Withdrawals Temporarily Disabled'; withdrawBtn.classList.add('opacity-50'); }
             const sel = document.getElementById('withdraw-method');
             sel.innerHTML = '<option value="">Choose Method...</option>';
             methods.forEach(m => sel.innerHTML += `<option value="${m.trim()}">${m.trim()}</option>`);
 
             document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', function() { switchPage(this.getAttribute('data-target')); }));
-            const copyReferralBtn = document.getElementById('btn-copy-referral');
-            if (copyReferralBtn) copyReferralBtn.onclick = copyReferralLink;
             
             document.getElementById('btn-shorten').addEventListener('click', async function() {
                 const url = document.getElementById('long-url-input').value.trim();
                 if (!url.startsWith('http')) return alert("Valid URL required");
-                this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; this.disabled = true;
                 const shortId = Math.random().toString(36).substring(2, 8);
                 await dbClient.from('links').insert([{ original_url: url, short_id: shortId, user_id: currentUserData.id }]);
                 document.getElementById('short-link-display').innerText = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=link_${shortId}`;
                 document.getElementById('shorten-result').classList.remove('hidden');
                 document.getElementById('long-url-input').value = '';
-                this.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i><span>Shorten & Earn</span>'; this.disabled = false;
+                loadTopLinks(); // refresh graph
+            });
+
+            loadTopLinks();
+        }
+
+        async function loadTopLinks() {
+            const { data } = await dbClient.from('links').select('short_id, clicks, earnings').eq('user_id', currentUserData.id).order('clicks', { ascending: false }).limit(10);
+            const list = document.getElementById('top-links-list'); list.innerHTML = '';
+            if(!data || !data.length) list.innerHTML = '<div class="text-slate-500 text-center py-5">No links yet.</div>';
+            data?.forEach((l, idx) => {
+                list.innerHTML += `<div class="glass-panel p-3 flex justify-between items-center"><div class="flex items-center"><div class="w-6 h-6 rounded-full bg-slate-800 text-xs font-bold flex items-center justify-center mr-3 text-slate-400">${idx+1}</div><div class="text-indigo-400 text-sm font-mono truncate w-24">${l.short_id}</div></div><div class="text-right"><div class="text-xs text-white"><i class="fa-solid fa-eye text-slate-500"></i> ${l.clicks||0}</div></div></div>`;
+            });
+        }
+
+        async function loadLinks() {
+            const { data } = await dbClient.from('links').select('*').eq('user_id', currentUserData.id).order('created_at', { ascending: false }).limit(30);
+            const list = document.getElementById('links-list'); list.innerHTML = '';
+            data?.forEach(l => {
+                list.innerHTML += `<div class="glass-panel p-4 mb-3"><div class="text-indigo-400 text-xs truncate mb-2">t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=link_${l.short_id}</div><div class="flex justify-between items-center text-xs"><span><i class="fa-solid fa-eye text-slate-400"></i> ${l.clicks||0}</span>${formatCurrencyLeft(l.earnings)}</div></div>`;
             });
         }
 
         window.submitWithdrawal = async function() {
-            const { data: latestSettings, error: settingsError } = await dbClient
-                .from('settings')
-                .select('min_withdraw,withdrawals_enabled')
-                .limit(1)
-                .maybeSingle();
-            if (settingsError) return alert('Unable to verify withdrawal settings. Please try again.');
-            if (latestSettings) {
-                adminSettings.min_withdraw = latestSettings.min_withdraw;
-                adminSettings.withdrawals_enabled = latestSettings.withdrawals_enabled;
-                const latestMinimum = Number(latestSettings.min_withdraw ?? 5);
-                document.getElementById('min-withdraw-display').innerText = `$${latestMinimum.toFixed(2)}`;
-                document.getElementById('withdraw-amount').min = String(latestMinimum);
-            }
-            if (latestSettings?.withdrawals_enabled === false) return alert('Withdrawals are temporarily unavailable. Please try again later.');
+            if (!adminSettings.withdrawals_enabled) return alert('Withdrawals are temporarily disabled.');
+            
             const method = document.getElementById('withdraw-method').value;
             const details = document.getElementById('withdraw-details').value.trim();
-            const amount = parseFloat(document.getElementById('withdraw-amount').value);
-            if(!method || !details || !amount || amount < (adminSettings.min_withdraw || 5)) return alert("Check limits and details.");
-            if(amount > currentUserData.balance) return alert("Insufficient balance!");
-
-            const newBal = currentUserData.balance - amount;
-            await dbClient.from('users').update({ balance: newBal }).eq('id', currentUserData.id);
-            await dbClient.from('withdrawals').insert([{ user_id: currentUserData.id, amount, method, details, status: 'pending' }]);
+            const tgLink = document.getElementById('withdraw-telegram').value.trim();
             
-            currentUserData.balance = newBal;
-            document.getElementById('header-balance').innerText = `$${newBal.toFixed(2)}`;
-            alert("Withdrawal Requested!"); switchPage('page-wallet');
+            if(!method || !details || !tgLink) return alert("All fields including Telegram Link are required.");
+            
+            const minInr = Number(adminSettings.min_withdraw_inr ?? 50);
+            
+            try {
+                // Secure Transactional Request via RPC
+                const { data, error } = await dbClient.rpc('request_withdrawal', {
+                    p_user_id: currentUserData.id,
+                    p_method: method,
+                    p_details: details,
+                    p_tg_link: tgLink,
+                    p_min_inr: minInr
+                });
+
+                if (error) throw error;
+                if (!data.success) throw new Error(data.message);
+
+                alert("Withdrawal Requested Successfully!"); 
+                currentUserData.balance = 0;
+                document.getElementById('header-balance').innerHTML = formatCurrency(0);
+                document.getElementById('wallet-balance-page').innerHTML = formatCurrency(0, 'large');
+                
+                document.getElementById('withdraw-details').value = '';
+                document.getElementById('withdraw-telegram').value = '';
+                
+                loadWithdrawalHistory();
+            } catch(e) {
+                alert(e.message || "Withdrawal failed. Check balance limits.");
+            }
         }
 
-        async function loadLinks() {
-            const { data } = await dbClient.from('links').select('*').eq('user_id', currentUserData.id).order('created_at', { ascending: false }).limit(20);
-            const list = document.getElementById('links-list'); list.innerHTML = '';
-            if(!data || !data.length) list.innerHTML = '<div class="text-slate-500 text-center py-5">No links yet.</div>';
-            data?.forEach(l => {
-                const shortUrl = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=link_${l.short_id}`;
-                list.innerHTML += `<div class="glass-panel p-4 mb-3"><div class="text-indigo-400 text-xs truncate">${shortUrl}</div><div class="flex space-x-4 pt-2 text-xs text-slate-300"><span><i class="fa-solid fa-eye"></i> ${l.clicks || 0}</span><span><i class="fa-solid fa-coins"></i> $${parseFloat(l.earnings || 0).toFixed(4)}</span></div></div>`;
-            });
-        }
         async function loadWithdrawalHistory() {
             const { data } = await dbClient.from('withdrawals').select('*').eq('user_id', currentUserData.id).order('created_at', { ascending: false });
             const list = document.getElementById('withdrawal-history-list'); list.innerHTML = '';
-            if (!data || !data.length) { list.innerHTML = '<div class="glass-panel p-6 text-center text-slate-400">No transactions yet.</div>'; return; }
+            if (!data || !data.length) return list.innerHTML = '<div class="glass-panel p-6 text-center text-slate-400">No transactions yet.</div>';
+            
             data.forEach(w => {
-                const statusClass = w.status === 'approved' ? 'text-emerald-400' : (w.status === 'rejected' ? 'text-rose-400' : 'text-amber-400');
-                list.innerHTML += `<div class="glass-panel p-4 flex justify-between items-center mb-2"><div><div class="text-sm font-bold text-white">${escapeHtml(w.method || 'Payout')}</div><div class="text-xs text-slate-400">${new Date(w.created_at).toLocaleDateString()}</div></div><div class="text-right text-sm font-bold text-white">$${Number(w.amount || 0).toFixed(2)}<br><span class="text-[10px] uppercase ${statusClass}">${escapeHtml(w.status || 'pending')}</span></div></div>`;
+                let sClass = 'text-amber-400';
+                if(w.status === 'approved') sClass = 'text-indigo-400';
+                if(w.status === 'paid') sClass = 'text-emerald-400';
+                if(w.status === 'rejected') sClass = 'text-rose-400';
+                
+                list.innerHTML += `<div class="glass-panel p-4 flex justify-between items-center mb-2">
+                    <div><div class="text-sm font-bold text-white">${w.method}</div><div class="text-[10px] text-slate-400">${new Date(w.created_at).toLocaleDateString()}</div></div>
+                    <div class="text-right">${formatCurrencyLeft(w.amount)}<div class="text-[10px] uppercase font-bold mt-1 ${sClass}">${w.status}</div></div>
+                </div>`;
             });
-        }
-        async function copyReferralLink() {
-            const link = document.getElementById('referral-link-display').innerText.trim();
-            if (!link || link === 'Generating...') return alert('Referral link is not ready yet.');
-            try {
-                if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(link);
-                else {
-                    const input = document.createElement('textarea'); input.value = link;
-                    input.style.position = 'fixed'; input.style.opacity = '0'; document.body.appendChild(input);
-                    input.focus(); input.select();
-                    const copied = document.execCommand('copy'); input.remove();
-                    if (!copied) throw new Error('Copy not supported');
-                }
-                const btn = document.getElementById('btn-copy-referral');
-                if (btn) { const old = btn.innerText; btn.innerText = 'Copied!'; setTimeout(() => btn.innerText = old, 1500); }
-            } catch (error) { alert('Unable to copy automatically. Please copy the referral link manually.'); }
         }
 
         async function fetchReferralDetails() {
-            const list = document.getElementById('referrals-list');
-            list.innerHTML = '<div class="glass-panel p-4 text-center text-slate-400">Loading referrals...</div>';
-            const { data: referrals, error } = await dbClient.from('referrals').select('referred_tg_id').eq('referrer_tg_id', currentUserData.telegram_id);
-            if (error) { list.innerHTML = '<div class="glass-panel p-4 text-center text-rose-400">Unable to load referrals.</div>'; return; }
-            const ids = [...new Set((referrals || []).map(r => r.referred_tg_id).filter(Boolean))];
-            document.getElementById('ref-total-count').innerText = ids.length;
-            const { data: earnedLogs } = await dbClient.from('earning_logs').select('amount').eq('user_id', currentUserData.id).eq('earning_type', 'referral');
-            const totalEarned = (earnedLogs || []).reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
-            document.getElementById('ref-total-earned').innerText = `$${totalEarned.toFixed(2)}`;
-            if (!ids.length) { list.innerHTML = '<div class="glass-panel p-6 text-center text-slate-400">You have not referred anyone yet.</div>'; return; }
-            const { data: users, error: usersError } = await dbClient.from('users').select('telegram_id,first_name,username').in('telegram_id', ids);
-            if (usersError) { list.innerHTML = '<div class="glass-panel p-4 text-center text-rose-400">Unable to load referral names.</div>'; return; }
-            const byId = new Map((users || []).map(u => [String(u.telegram_id), u]));
-            list.innerHTML = ids.map(id => {
-                const user = byId.get(String(id));
-                const name = user?.first_name || 'Telegram User';
-                const username = user?.username ? '@' + user.username.replace(/^@/, '') : `ID: ${id}`;
-                return `<div class="glass-panel p-4 flex items-center justify-between"><div class="min-w-0"><div class="font-bold text-white truncate">${escapeHtml(name)}</div><div class="text-xs text-slate-400">${escapeHtml(username)}</div></div><i class="fa-solid fa-user-check text-emerald-400"></i></div>`;
-            }).join('');
+            const { data: referrals } = await dbClient.from('referrals').select('reward_paid').eq('referrer_tg_id', currentUserData.telegram_id);
+            const total = referrals?.length || 0;
+            const paid = referrals?.filter(r => r.reward_paid).length || 0;
+            
+            const refInr = Number(adminSettings.refer_reward_inr ?? 5);
+            const earnedInr = paid * refInr;
+            const earnedUsd = earnedInr / 85;
+
+            document.getElementById('ref-total-count').innerText = total;
+            document.getElementById('ref-total-earned').innerHTML = formatCurrencyLeft(earnedUsd);
+            
+            document.getElementById('btn-copy-referral').onclick = () => {
+                navigator.clipboard.writeText(document.getElementById('referral-link-display').innerText);
+                alert("Copied!");
+            };
         }
 
-        function escapeHtml(value) {
-            return String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-        }
-
-        // AD REWARD FLOW: Monetag first, AdsBitVex fallback. Never unlock on SDK errors.
+        // AD REWARD FLOW (Monetag Only)
         function setupAdStep() {
             const timerEl = document.getElementById('ad-timer-text');
             const btn = document.getElementById('btn-watch-ad');
-            timerEl.classList.remove('hidden');
             let timeLeft = Math.max(0, Math.min(300, Number(adminSettings.ad_timer) || 5));
-            btn.disabled = true;
-            btn.innerHTML = `Wait ${timeLeft}s...`;
+            btn.disabled = true; btn.innerHTML = `Wait ${timeLeft}s...`;
+            
             const interval = setInterval(() => {
                 timeLeft--;
                 timerEl.innerText = Math.max(0, timeLeft);
@@ -662,7 +509,7 @@ window.addEventListener('unhandledrejection', function(e) {
                 if (timeLeft <= 0) {
                     clearInterval(interval);
                     btn.disabled = false;
-                    btn.className = 'w-full primary-gradient text-white font-bold py-4 rounded-xl';
+                    btn.className = 'w-full primary-gradient text-white font-bold py-4 rounded-xl shadow-lg';
                     btn.innerHTML = 'Click to Watch Ad';
                     btn.onclick = executeAdClick;
                     timerEl.innerHTML = '<i class="fa-solid fa-play text-indigo-500"></i>';
@@ -670,112 +517,51 @@ window.addEventListener('unhandledrejection', function(e) {
             }, 1000);
         }
 
-        function getAdFunction(provider) {
-            const configured = provider === 'monetag'
-                ? (adminSettings.monetag_reward_func || 'show_12122788')
-                : (adminSettings.adsbitvex_reward_func || 'showadsbitvex');
-            const name = String(configured).replace(/^window\./, '').trim();
-            const fn = window[name];
-            return typeof fn === 'function' ? fn : null;
-        }
-
-        async function waitForAdFunction(provider, timeoutMs = 8000) {
-            const started = Date.now();
-            while (Date.now() - started < timeoutMs) {
-                const fn = getAdFunction(provider);
-                if (fn) return fn;
-                await new Promise(resolve => setTimeout(resolve, 250));
-            }
-            throw new Error(`${provider} SDK did not become ready.`);
-        }
-
-        async function runRewardProvider(provider) {
-            const fn = await waitForAdFunction(provider);
-            // SDK promise resolve is the provider's client-side completion signal, not cryptographic proof.
-            await Promise.resolve(fn());
-            return provider;
-        }
-
         async function executeAdClick() {
             const btn = document.getElementById('btn-watch-ad');
-            if (btn.dataset.busy === '1') return;
-            btn.dataset.busy = '1';
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading Ad...';
+            btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading Ad...';
 
-            const mode = adminSettings.active_reward_ad || 'monetag';
-            const providers = mode === 'both' ? ['monetag', 'adsbitvex'] : [mode];
-            let completedProvider = null;
-            const errors = [];
-            for (const provider of providers) {
-                try {
-                    completedProvider = await runRewardProvider(provider);
-                    break;
-                } catch (error) {
-                    console.warn(`${provider} rewarded ad failed:`, error);
-                    errors.push(error.message || String(error));
-                }
-            }
-
-            if (!completedProvider) {
-                btn.dataset.busy = '0';
-                btn.disabled = false;
-                btn.innerHTML = 'Try Again';
-                alert('No ads available right now. Please try again later.');
+            const funcName = adminSettings.monetag_reward_func || 'show_12122788';
+            const fn = window[funcName];
+            
+            if (typeof fn !== 'function') {
+                alert('Ad SDK not ready. Retrying...');
+                setTimeout(() => { btn.disabled = false; btn.innerHTML = 'Try Again'; }, 2000);
                 return;
             }
-            await handleAdSuccess(completedProvider);
+
+            try {
+                await Promise.resolve(fn());
+                await handleAdSuccess();
+            } catch (error) {
+                btn.disabled = false; btn.innerHTML = 'Try Again';
+            }
         }
 
-        async function handleAdSuccess(provider) {
+        async function handleAdSuccess() {
             const btn = document.getElementById('btn-watch-ad');
-            const clickerId = tg.initDataUnsafe?.user?.id;
-            if (!tg.initData || !clickerId) {
-                btn.dataset.busy = '0';
-                btn.disabled = false;
-                btn.innerHTML = 'Try Again';
-                alert('Please open TGShortUrl inside Telegram to continue.');
-                return;
-            }
-
-            // Send Telegram's signed initData to backend. The backend validates identity,
-            // self-clicks, duplicate claims and IP limits before applying any earnings.
             try {
-                const response = await fetch(`${VERCEL_API_URL}/reward`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        short_id: window.currentShortId,
-                        init_data: tg.initData,
-                        ad_provider: provider
-                    })
+                const res = await fetch(`${VERCEL_API_URL}/reward`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ short_id: window.currentShortId, init_data: tg.initData, ad_provider: 'monetag' })
                 });
-                const result = await response.json();
-                if (!response.ok || !result.success) throw new Error(result.error || 'Reward request failed.');
-            } catch (error) {
-                console.error('Reward request failed:', error);
-                btn.dataset.busy = '0';
-                btn.disabled = false;
-                btn.innerHTML = 'Try Again';
-                alert(error.message || 'Unable to process this click. Please try again later.');
-                return;
+                const result = await res.json();
+                if (!res.ok || !result.success) throw new Error(result.error || 'Fraud check failed.');
+            } catch (e) {
+                btn.disabled = false; btn.innerHTML = 'Try Again'; alert(e.message); return;
             }
 
-            document.getElementById('btn-watch-ad').classList.add('hidden');
+            btn.classList.add('hidden');
             document.getElementById('ad-timer-container').classList.add('hidden');
             document.getElementById('ad-step-title').innerText = 'Link Unlocked!';
             const getLinkBtn = document.getElementById('btn-get-link');
             getLinkBtn.classList.remove('hidden');
-            const { data, error } = await dbClient.from('links').select('original_url').eq('short_id', window.currentShortId).single();
-            if (error || !data?.original_url) {
-                getLinkBtn.classList.add('hidden');
-                alert('Link could not be loaded. Please contact support.');
-                return;
-            }
-            getLinkBtn.onclick = () => tg.openLink(data.original_url);
+            
+            const { data } = await dbClient.from('links').select('original_url').eq('short_id', window.currentShortId).single();
+            if (data?.original_url) getLinkBtn.onclick = () => tg.openLink(data.original_url);
         }
 
         window.onload = initApp;
     </script>
 </body>
-                                                                                                                                                                                                        </html>
+</html>
