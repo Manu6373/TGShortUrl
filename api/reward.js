@@ -67,13 +67,14 @@ export default async function handler(req, res) {
 
     const now = new Date();
     const rewardDate = now.toISOString().slice(0, 10);
-    const { error: claimError } = await db.from('reward_claims').insert({ short_id, clicker_tg_id: telegramUser.id, ip_address: clientIp, reward_date: rewardDate });
+    const { data: claimRow, error: claimError } = await db.from('reward_claims').insert({ short_id, clicker_tg_id: telegramUser.id, ip_address: clientIp, reward_date: rewardDate }).select('id').single();
+    await db.from('click_logs').insert({ link_id: link.id, clicker_tg_id: telegramUser.id });
     if (claimError) {
       if (claimError.code === '23505') return res.status(200).json({ success: true, earned: false, duplicate: true, message: 'Already used this link today.' });
       return res.status(500).json({ error: 'Could not register attempt.' });
     }
 
-    const { data: settings } = await db.from('settings').select('cpm,refer_reward_inr,ip_restrict_hours').limit(1).maybeSingle();
+    const { data: settings } = await db.from('settings').select('cpm,refer_percent,ip_restrict_hours').limit(1).maybeSingle();
     const cpm = Math.max(0, Number(settings?.cpm) || 0);
     const restrictHours = Math.max(0, Number(settings?.ip_restrict_hours) || 24);
     const earnAmount = cpm / 1000;
@@ -107,27 +108,53 @@ export default async function handler(req, res) {
       }).eq('id', owner.id);
 
       await db.from('links').update({ earnings: (Number(link.earnings) || 0) + earnAmount }).eq('id', link.id);
+      await db.from('earning_logs').insert({
+        user_id: owner.id,
+        amount: earnAmount,
+        source: 'link_earning',
+        referred_user_id: null,
+        reward_claim_id: claimRow?.id || null
+      });
 
-      // FLAT REFERRAL REWARD - Trigger on first valid reward of referred user
+      // LIFETIME PERCENTAGE REFERRAL COMMISSION
       if (owner.telegram_id) {
-        const { data: referral } = await db.from('referrals').select('id,referrer_tg_id,reward_paid').eq('referred_tg_id', owner.telegram_id).maybeSingle();
-        if (referral && !referral.reward_paid && referral.referrer_tg_id) {
-          const refRewardInr = Math.max(0, Number(settings?.refer_reward_inr) || 5);
-          const refRewardUsd = refRewardInr / 85; 
-          
-          const { data: referrer } = await db.from('users').select('id,balance,total_earnings').eq('telegram_id', referral.referrer_tg_id).maybeSingle();
-          if (referrer && refRewardUsd > 0) {
-            await db.from('users').update({
-              balance: (Number(referrer.balance) || 0) + refRewardUsd,
-              total_earnings: (Number(referrer.total_earnings) || 0) + refRewardUsd
-            }).eq('id', referrer.id);
-            await db.from('referrals').update({ reward_paid: true }).eq('id', referral.id);
+        const { data: referral } = await db.from('referrals')
+          .select('id,referrer_tg_id')
+          .eq('referred_tg_id', owner.telegram_id)
+          .maybeSingle();
+
+        if (referral?.referrer_tg_id) {
+          const commissionPercent = Math.max(0, Math.min(100, Number(settings?.refer_percent ?? 1)));
+          const commissionAmount = earnAmount * commissionPercent / 100;
+
+          if (commissionAmount > 0) {
+            const { data: referrer } = await db.from('users')
+              .select('id,balance,total_earnings')
+              .eq('telegram_id', referral.referrer_tg_id)
+              .maybeSingle();
+
+            if (referrer) {
+              const { error: commissionLogError } = await db.from('earning_logs').insert({
+                user_id: referrer.id,
+                amount: commissionAmount,
+                source: 'referral_commission',
+                referred_user_id: owner.id,
+                reward_claim_id: claimRow?.id || null
+              });
+
+              if (!commissionLogError) {
+                await db.from('users').update({
+                  balance: (Number(referrer.balance) || 0) + commissionAmount,
+                  total_earnings: (Number(referrer.total_earnings) || 0) + commissionAmount
+                }).eq('id', referrer.id);
+              }
+            }
           }
         }
       }
     }
 
-    return res.status(200).json({ success: true, earned: grantReward });
+        return res.status(200).json({ success: true, earned: grantReward });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
