@@ -61,7 +61,7 @@
         <div class="glass-panel p-8 grid grid-cols-2 gap-6">
             <div class="col-span-1">
                 <label class="block text-xs text-slate-400 mb-1">Global CPM (USD)</label><input type="number" step="0.01" id="set-cpm" class="w-full bg-slate-900 border border-slate-700 p-2 text-white mb-4">
-                <label class="block text-xs text-slate-400 mb-1">Referral Flat Reward (INR)</label><input type="number" id="set-ref-inr" class="w-full bg-slate-900 border border-slate-700 p-2 text-white mb-4">
+                <label class="block text-xs text-slate-400 mb-1">Referral Commission (%)</label><input type="number" min="0" max="100" step="0.1" id="set-ref-percent" class="w-full bg-slate-900 border border-slate-700 p-2 text-white mb-4">
                 <label class="block text-xs text-slate-400 mb-1">Min Withdrawal (INR)</label><input type="number" id="set-min-inr" class="w-full bg-slate-900 border border-slate-700 p-2 text-white mb-4">
                 <label class="block text-xs text-slate-400 mb-1">Withdrawals Enabled</label><select id="set-with-enable" class="w-full bg-slate-900 border border-slate-700 p-2 text-white mb-4"><option value="true">Yes</option><option value="false">No</option></select>
             </div>
@@ -85,7 +85,7 @@
             const { data: { session } } = await dbClient.auth.getSession();
             if (session) {
                 sessionToken = session.access_token;
-                const { data: u } = await dbClient.from('users').select('is_admin').eq('auth_id', session.user.id).single();
+                const { data: u } = await dbClient.from('users').select('is_admin').or(`auth_id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`).maybeSingle();
                 if (u && u.is_admin) {
                     document.getElementById('login-screen').classList.add('hidden');
                     document.getElementById('admin-dashboard').classList.remove('hidden');
@@ -99,7 +99,7 @@
             const email = document.getElementById('admin-email').value;
             const pass = document.getElementById('admin-password').value;
             const { error } = await dbClient.auth.signInWithPassword({ email, password: pass });
-            if (error) alert(error.message); else checkAdmin();
+            if (error) alert(error.message); else { await checkAdmin(); }
         }
         async function adminLogout() { await dbClient.auth.signOut(); location.reload(); }
         async function fetchApi(action, data={}) {
@@ -154,7 +154,7 @@
             const d = res.data;
             if(d) {
                 document.getElementById('set-cpm').value = d.cpm || 2;
-                document.getElementById('set-ref-inr').value = d.refer_reward_inr || 5;
+                document.getElementById('set-ref-percent').value = d.refer_percent ?? 1;
                 document.getElementById('set-min-inr').value = d.min_withdraw_inr || 50;
                 document.getElementById('set-with-enable').value = d.withdrawals_enabled ? "true" : "false";
                 document.getElementById('set-timer').value = d.ad_timer || 5;
@@ -167,7 +167,7 @@
         window.saveSettings = async function() {
             const req = {
                 cpm: parseFloat(document.getElementById('set-cpm').value),
-                refer_reward_inr: parseFloat(document.getElementById('set-ref-inr').value),
+                refer_percent: Math.max(0, Math.min(100, parseFloat(document.getElementById('set-ref-percent').value) || 0)),
                 min_withdraw_inr: parseFloat(document.getElementById('set-min-inr').value),
                 withdrawals_enabled: document.getElementById('set-with-enable').value === 'true',
                 ad_timer: parseInt(document.getElementById('set-timer').value),
