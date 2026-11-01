@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   if (authError || !user) return res.status(401).json({error:'Invalid login'});
   
   const db = createClient(url, secret, {auth:{persistSession:false}});
-  const {data:admin,error:adminError}=await db.from('users').select('id,is_admin').eq('auth_id',user.id).maybeSingle();
+  const {data:admin,error:adminError}=await db.from('users').select('id,is_admin').or(`auth_id.eq.${user.id},auth_user_id.eq.${user.id}`).maybeSingle();
   if (adminError || !admin?.is_admin) return res.status(403).json({error:'Admin access denied'});
   
   const {action,id,block,status,data,caption,image_url,use_button,mini_app_url}=req.body||{};
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
     if(action==='settings') {const r=await db.from('settings').select('*').limit(1).maybeSingle();if(r.error)throw r.error;return res.json({data:r.data})}
     
     if(action==='saveSettings') {
-        const allowed=['cpm','refer_reward_inr','min_withdraw_inr','ad_timer','ip_restrict_hours','monetag_reward_script','monetag_reward_func','telegram_channel_url','payment_methods','withdrawals_enabled','maintenance_mode'];
+        const allowed=['cpm','refer_percent','refer_reward_inr','min_withdraw_inr','ad_timer','ip_restrict_hours','monetag_reward_script','monetag_reward_func','telegram_channel_url','payment_methods','withdrawals_enabled','maintenance_mode'];
         const clean={};
         for(const key of allowed) if(Object.prototype.hasOwnProperty.call(data||{},key)) clean[key]=data[key];
         const existing=await db.from('settings').select('id').limit(1).maybeSingle();
