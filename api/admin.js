@@ -59,7 +59,7 @@ export default async function handler(req, res) {
         'cpm',
         'refer_percent',
         'refer_reward_inr',
-        'min_withdraw_inr',
+        'min_withdraw',
         'ad_timer',
         'ip_restrict_hours',
         'monetag_reward_script',
@@ -118,7 +118,7 @@ export default async function handler(req, res) {
       return res.json({
         ok: true,
         data: saved,
-        saved_min_withdraw_inr: saved.min_withdraw_inr
+        saved_min_withdraw: saved.min_withdraw
       });
     }
 
