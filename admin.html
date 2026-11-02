@@ -28,6 +28,7 @@
                 <button class="nav-btn w-full text-left p-3 rounded bg-indigo-600 text-white" onclick="switchTab('dashboard', this)">Dashboard Stats</button>
                 <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('withdrawals', this)">Withdrawals</button>
                 <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('settings', this)">System Settings</button>
+                <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('providers', this)">Ad Providers</button>
             </nav>
             <button onclick="adminLogout()" class="w-full p-3 text-left text-red-400 hover:bg-slate-800 rounded">Logout</button>
         </aside>
@@ -75,10 +76,21 @@
                 <label class="block text-xs text-slate-400 mb-1">AdsBitVex Function Name</label><input type="text" id="set-adsbitvex-func" value="window.showadsbitvex" class="w-full bg-slate-900 border border-slate-700 p-2 text-white mb-4">
                 <label class="block text-xs text-slate-400 mb-1">Reward Ad Sequence</label><select id="set-active-reward-ad" class="w-full bg-slate-900 border border-slate-700 p-2 text-white mb-4"><option value="monetag">Monetag only</option><option value="adsbitvex">AdsBitVex only</option><option value="monetag,adsbitvex">Monetag → AdsBitVex (both required)</option><option value="adsbitvex,monetag">AdsBitVex → Monetag (both required)</option></select>
                 <p class="text-xs text-amber-300 mb-4">GET LINK is unlocked only after every selected provider Promise completes successfully. This is a client-side SDK completion check; it is not independent server-side proof of an ad view.</p>
+                <label class="block text-xs text-slate-400 mb-1">AdsBitVex Banner Placement ID</label><input type="text" id="set-banner-placement" placeholder="Enter your placement ID" class="w-full bg-slate-900 border border-slate-700 p-2 text-white mb-4">
                 <label class="block text-xs text-slate-400 mb-1">Maintenance Mode</label><select id="set-maint" class="w-full bg-slate-900 border border-slate-700 p-2 text-white mb-4"><option value="false">Off</option><option value="true">On</option></select>
             </div>
             <button onclick="saveSettings()" class="col-span-2 bg-indigo-600 font-bold py-3 rounded-lg text-white">Save Configuration</button>
         </div>
+    </template>
+
+    <template id="tpl-providers">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <div><h2 class="text-2xl font-bold">Ad Providers</h2><p class="text-sm text-slate-400 mt-1">Add and manage rewarded ad networks without editing website code.</p></div>
+            <button onclick="addAdProvider()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-3 rounded-lg font-bold"><i class="fa-solid fa-plus mr-2"></i>Add New Ad</button>
+        </div>
+        <div class="glass-panel p-4 mb-5"><p class="text-xs text-amber-300">Rewarded providers run in ascending sequence order. A provider must return a Promise that resolves when its ad flow completes. This browser-side signal is not independent proof of a genuine ad view.</p></div>
+        <div id="provider-list" class="space-y-4"><p class="text-slate-400 text-sm">No providers added yet. Tap “Add New Ad” to begin.</p></div>
+        <div class="mt-6 flex flex-wrap gap-3"><button onclick="saveAdProviders()" class="bg-emerald-600 hover:bg-emerald-500 px-5 py-3 rounded-lg font-bold">Save Ad Providers</button><button onclick="loadAdProviders()" class="bg-slate-700 px-5 py-3 rounded-lg font-bold">Reload</button></div>
     </template>
 
     <script>
@@ -141,6 +153,7 @@
             if(tab === 'dashboard') loadDash();
             if(tab === 'withdrawals') loadWithdrawals();
             if(tab === 'settings') loadSettings();
+            if(tab === 'providers') loadAdProviders();
         }
 
         async function loadDash() {
@@ -189,6 +202,7 @@
                 document.getElementById('set-adsbitvex-func').value = d.adsbitvex_reward_func || 'window.showadsbitvex';
                 document.getElementById('set-active-reward-ad').value = d.active_reward_ad || 'monetag';
                 document.getElementById('set-maint').value = d.maintenance_mode ? "true" : "false";
+                document.getElementById('set-banner-placement').value = d.adsbitvex_banner_code || '';
             }
         }
 
@@ -205,7 +219,8 @@
                 monetag_reward_func: document.getElementById('set-mone-func').value,
                 adsbitvex_reward_script: document.getElementById('set-adsbitvex-script').value,
                 adsbitvex_reward_func: document.getElementById('set-adsbitvex-func').value,
-                active_reward_ad: document.getElementById('set-active-reward-ad').value
+                active_reward_ad: document.getElementById('set-active-reward-ad').value,
+                adsbitvex_banner_code: document.getElementById('set-banner-placement').value.trim()
             };
             if (!Number.isFinite(req.min_withdraw) || req.min_withdraw <= 0) {
                 alert('Enter a valid minimum withdrawal amount in USD.');
@@ -214,6 +229,60 @@
             const res = await fetchApi('saveSettings', { data: req });
             if(res.error) alert(res.error); else alert('Settings Saved!');
         }
+
+        let adProviders = [];
+        function safeProviderId(name) {
+            return String(name || 'provider').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'provider';
+        }
+        async function loadAdProviders() {
+            const list = document.getElementById('provider-list');
+            if (!list) return;
+            list.innerHTML = '<p class="text-slate-400">Loading providers...</p>';
+            const res = await fetchApi('settings');
+            if (res.error) { list.innerHTML = `<p class="text-rose-400">${res.error}</p>`; return; }
+            adProviders = Array.isArray(res.data?.ad_providers) ? res.data.ad_providers : [];
+            renderAdProviders();
+        }
+        function renderAdProviders() {
+            const list = document.getElementById('provider-list'); if (!list) return;
+            if (!adProviders.length) { list.innerHTML = '<div class="glass-panel p-6 text-center text-slate-400">No ad providers added yet. Tap “Add New Ad”.</div>'; return; }
+            list.innerHTML = adProviders.map((p, i) => `<div class="glass-panel p-5 space-y-3" data-provider-index="${i}">
+                <div class="flex justify-between items-center gap-2"><h3 class="font-bold">Ad Provider ${i+1}</h3><button onclick="removeAdProvider(${i})" class="text-rose-400 text-sm"><i class="fa-solid fa-trash mr-1"></i>Delete</button></div>
+                <div class="grid md:grid-cols-2 gap-3">
+                    <label class="text-xs text-slate-400">Provider Name<input data-field="name" value="${escapeAttr(p.name||'')}" class="mt-1 w-full bg-slate-900 border border-slate-700 p-2 rounded text-white"></label>
+                    <label class="text-xs text-slate-400">Ad Type<input value="Rewarded" disabled class="mt-1 w-full bg-slate-900 border border-slate-700 p-2 rounded text-slate-300"><input data-field="type" type="hidden" value="rewarded"></label>
+                    <label class="text-xs text-slate-400 md:col-span-2">SDK Script / Embed Code<textarea data-field="script" rows="3" class="mt-1 w-full bg-slate-900 border border-slate-700 p-2 rounded text-white" placeholder="Paste the provider SDK script tag">${escapeHtml(p.script||'')}</textarea></label>
+                    <label class="text-xs text-slate-400">Function Name (rewarded ads)<input data-field="function_name" value="${escapeAttr(p.function_name||'')}" placeholder="window.showAd" class="mt-1 w-full bg-slate-900 border border-slate-700 p-2 rounded text-white"></label>
+                    <label class="text-xs text-slate-400">Sequence Order<input data-field="order" type="number" min="1" value="${Number(p.order)||i+1}" class="mt-1 w-full bg-slate-900 border border-slate-700 p-2 rounded text-white"></label>
+                </div>
+                <label class="inline-flex items-center gap-2 text-sm"><input data-field="enabled" type="checkbox" ${p.enabled?'checked':''}> Enabled</label>
+            </div>`).join('');
+        }
+        function escapeHtml(v) { return String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+        function escapeAttr(v) { return escapeHtml(v); }
+        window.addAdProvider = function() { collectProviderInputs(); adProviders.push({ id:'', name:'', type:'rewarded', script:'', function_name:'', order:adProviders.length+1, enabled:true }); renderAdProviders(); };
+        function collectProviderInputs() {
+            document.querySelectorAll('#provider-list [data-provider-index]').forEach(card => {
+                const i=Number(card.dataset.providerIndex); if (!adProviders[i]) return;
+                card.querySelectorAll('[data-field]').forEach(el => { const k=el.dataset.field; adProviders[i][k] = el.type==='checkbox' ? el.checked : (k==='order' ? Number(el.value)||1 : el.value); });
+            });
+        }
+        window.removeAdProvider = function(i) { collectProviderInputs(); adProviders.splice(i,1); renderAdProviders(); };
+        window.saveAdProviders = async function() {
+            collectProviderInputs();
+            const seen = new Set();
+            for (const p of adProviders) {
+                if (!p.name.trim()) return alert('Enter a name for every ad provider.');
+                if (!p.script.trim()) return alert(`Add the SDK script for ${p.name}.`);
+                if (p.type === 'rewarded' && !p.function_name.trim()) return alert(`Enter the reward function name for ${p.name}.`);
+                p.id = safeProviderId(p.name);
+                if (seen.has(p.id)) return alert('Provider names must be unique.');
+                seen.add(p.id);
+            }
+            adProviders.sort((a,b)=>Number(a.order)-Number(b.order));
+            const res = await fetchApi('saveSettings', { data: { ad_providers: adProviders } });
+            if (res.error) alert(res.error); else alert('Ad providers saved successfully.');
+        };
     </script>
 </body>
 </html>
