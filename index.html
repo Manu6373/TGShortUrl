@@ -489,7 +489,11 @@
                 await loadAuthenticatedProfile(sessionData.session || authData.session);
             } catch (error) {
                 console.error('TGShortUrl authentication error:', error);
-                alert(error?.message || 'Login failed. Please try again.');
+                alert(error?.message?.includes('Signups not allowed')
+    ? 'Currently Registration Closed!! For more info contact admin.'
+    : error?.message?.includes('Invalid login credentials')
+    ? 'Invalid email or password.'
+    : (error?.message || 'Login failed. Please try again.'));
             } finally {
                 button.disabled = false;
                 button.innerText = isLoginMode ? 'Login' : 'Register';
