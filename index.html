@@ -172,8 +172,8 @@
                     <div class="mb-6"><input type="url" id="withdraw-telegram" placeholder="Your Telegram Channel/Group Link (Required)" class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-3 text-sm"></div>
                     <button id="withdraw-submit-btn" onclick="submitWithdrawal()" class="w-full success-gradient text-white font-bold py-4 rounded-xl shadow-lg">Submit Request</button>
                     <div id="withdrawal-weekend-status" class="hidden w-full rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-center">
-                        <div class="font-bold text-emerald-300"><i class="fa-solid fa-calendar-check mr-2"></i>WITHDRAWALS LIVE</div>
-                        <div class="text-sm text-slate-200 mt-1">Withdrawals are processed every Sunday.</div>
+                        <div class="text-sm font-bold text-emerald-300"><i class="fa-solid fa-calendar-check mr-2"></i>⏰ WITHDRAWALS OPEN EVERY SATURDAY &amp; SUNDAY</div>
+                        <div class="text-xs text-slate-200 mt-1">Withdrawals can be requested every Saturday and Sunday.</div>
                     </div>
                 </div>
                 <h3 class="text-lg font-bold text-white mb-3"><i class="fa-solid fa-clock-rotate-left text-indigo-400 mr-2"></i>Payout History</h3>
@@ -275,15 +275,41 @@
             });
         }
 
+        function getConfiguredRewardProviders() {
+            const raw = String(adminSettings.active_reward_ad || 'monetag').toLowerCase();
+            const valid = raw.split(',').map(x => x.trim()).filter(x => ['monetag', 'adsbitvex'].includes(x));
+            return [...new Set(valid.length ? valid : ['monetag'])];
+        }
+
+        function resolveWindowFunction(path) {
+            return String(path || '').split('.').reduce((obj, key) => obj && obj[key], window);
+        }
+
+        async function runRewardProvider(provider) {
+            const functionName = provider === 'monetag'
+                ? (adminSettings.monetag_reward_func || 'show_12122788')
+                : (adminSettings.adsbitvex_reward_func || 'window.showadsbitvex');
+            const fn = resolveWindowFunction(functionName);
+            if (typeof fn !== 'function') throw new Error(`${provider} ad SDK is not ready. Please try again.`);
+            await Promise.resolve(fn());
+        }
+
         async function loadAdminSettings() {
             try {
                 const { data, error } = await dbClient.from('settings').select('*').order('id', { ascending: true }).limit(1).maybeSingle();
                 if (error) throw error;
                 if (data) adminSettings = data;
                 
-                // Inject Monetag
-                const code = adminSettings.monetag_reward_script || "<script src='//libtl.com/sdk.js' data-zone='12122788' data-sdk='show_12122788'><\/script>";
-                injectHTMLWithScripts(code);
+                // Load only the SDKs selected in the Admin Panel.
+                const providers = getConfiguredRewardProviders();
+                if (providers.includes('monetag')) {
+                    const code = adminSettings.monetag_reward_script || "<script src='//libtl.com/sdk.js' data-zone='12122788' data-sdk='show_12122788'><\/script>";
+                    injectHTMLWithScripts(code);
+                }
+                if (providers.includes('adsbitvex')) {
+                    const code = adminSettings.adsbitvex_reward_script || '<script src="https://sdk.adsbitvex.com/functions/v1/ad-script?appid=000540"><\/script>';
+                    injectHTMLWithScripts(code);
+                }
             } catch (error) { console.error("Settings loading error:", error); }
         }
 
@@ -688,32 +714,30 @@
 
         async function executeAdClick() {
             const btn = document.getElementById('btn-watch-ad');
-            btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading Ad...';
-
-            const funcName = adminSettings.monetag_reward_func || 'show_12122788';
-            const fn = window[funcName];
-            
-            if (typeof fn !== 'function') {
-                alert('Ad SDK not ready. Retrying...');
-                setTimeout(() => { btn.disabled = false; btn.innerHTML = 'Try Again'; }, 2000);
-                return;
-            }
-
+            btn.disabled = true;
+            const providers = getConfiguredRewardProviders();
             try {
-                await Promise.resolve(fn());
+                for (let i = 0; i < providers.length; i++) {
+                    const provider = providers[i];
+                    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading ${provider === 'monetag' ? 'Monetag' : 'AdsBitVex'} (${i + 1}/${providers.length})...`;
+                    await runRewardProvider(provider);
+                }
                 btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Verifying Ad...';
-                await handleAdSuccess();
+                await handleAdSuccess(providers);
             } catch (error) {
-                btn.disabled = false; btn.innerHTML = 'Try Again';
+                console.error('Rewarded ad flow failed:', error);
+                btn.disabled = false;
+                btn.innerHTML = 'Try Again';
+                alert(error?.message || 'Ad could not be completed. Please try again.');
             }
         }
 
-        async function handleAdSuccess() {
+        async function handleAdSuccess(providers) {
             const btn = document.getElementById('btn-watch-ad');
             try {
                 const res = await fetch(`${VERCEL_API_URL}/reward`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ short_id: window.currentShortId, init_data: tg.initData, ad_provider: 'monetag' })
+                    body: JSON.stringify({ short_id: window.currentShortId, init_data: tg.initData, ad_providers: providers })
                 });
                 const result = await res.json();
                 if (!res.ok || !result.success) throw new Error(result.error || 'Fraud check failed.');
