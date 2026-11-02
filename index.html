@@ -650,7 +650,9 @@
             const details = document.getElementById('withdraw-details').value.trim();
             const tgLink = document.getElementById('withdraw-telegram').value.trim();
             
-            if(!method || !details || !tgLink) return alert("All fields including Telegram Link are required.");
+            if (!method || !details || !tgLink) {
+    return alert("Please enter valid UPI details and your traffic source (Telegram Channel/Group Link), then submit your withdrawal request.");
+            }
             
             // request_withdrawal RPC expects the minimum in INR.
             // Admin Panel stores it in USD, so convert using the app's ₹85/USD rate.
