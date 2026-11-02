@@ -134,6 +134,15 @@
                         <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1"><i class="fa-solid fa-chart-line text-indigo-400 mr-1"></i>Average CPM</div><div id="report-month-cpm" class="text-xl font-bold text-indigo-400">0.0000</div></div>
                     </div>
                 </div>
+                <div class="mx-4 mb-6">
+                    <div class="glass-panel p-5 flex items-center justify-between border border-indigo-500/30">
+                        <div>
+                            <div class="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-1"><i class="fa-solid fa-globe mr-2"></i>Global CPM</div>
+                            <div class="text-xs text-slate-400">Current Admin CPM Rate</div>
+                        </div>
+                        <div id="report-global-cpm" class="text-2xl font-bold text-indigo-400">$0.00</div>
+                    </div>
+                </div>
             </div>
                 </div>
             </div>
@@ -633,7 +642,11 @@
             if (referralResult.error) throw referralResult.error;
 
             const logs = logsResult.data || [];
-            const earnings = logs.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+            // Only link_earning contributes to link earnings and Average CPM.
+            // Referral commissions are displayed separately and never affect CPM.
+            const earnings = logs
+                .filter(row => row.source === 'link_earning')
+                .reduce((sum, row) => sum + Number(row.amount || 0), 0);
             const referralEarnings = (referralResult.data || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
             let views = 0;
             if (linkIds.length) {
@@ -662,12 +675,17 @@
             if (monthPicker && !monthPicker.value) monthPicker.value = monthKey;
             if (monthPicker) monthPicker.max = monthKey;
 
+            // Global CPM always reflects the current CPM configured in Admin Panel.
+            const globalCpm = Number(adminSettings.cpm || 0);
+            const globalCpmEl = document.getElementById('report-global-cpm');
+            if (globalCpmEl) globalCpmEl.innerText = `$${globalCpm.toFixed(2)}`;
+
             try {
                 const { data: userLinks, error: linksError } = await dbClient.from('links').select('id').eq('user_id', u.id);
                 if (linksError) throw linksError;
                 const linkIds = (userLinks || []).map(row => row.id);
                 const dayRange = localRangeFromDateKey(todayKey);
-                const monthRange = localRangeFromMonthKey(monthPicker.value || monthKey);
+                const monthRange = localRangeFromMonthKey(monthPicker?.value || monthKey);
                 const [dailyStats, monthlyStats] = await Promise.all([
                     getReportStats(dayRange.start, dayRange.end, linkIds, u.id),
                     getReportStats(monthRange.start, monthRange.end, linkIds, u.id)
