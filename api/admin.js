@@ -66,6 +66,8 @@ export default async function handler(req, res) {
         'monetag_reward_func',
         'adsbitvex_reward_script',
         'adsbitvex_reward_func',
+        'adsbitvex_banner_code',
+        'ad_providers',
         'active_reward_ad',
         'telegram_channel_url',
         'payment_methods',
