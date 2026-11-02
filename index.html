@@ -111,19 +111,27 @@
 
 
                 <div class="mx-4 mb-6">
-                    <h3 class="text-sm font-bold text-white mb-3 uppercase tracking-wider"><i class="fa-solid fa-chart-column text-indigo-400 mr-2"></i>Today's Report</h3>
+                    <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                        <h3 class="text-sm font-bold text-white uppercase tracking-wider"><i class="fa-solid fa-chart-column text-indigo-400 mr-2"></i>Today's Report</h3>
+                        <span class="text-xs text-slate-400">Today only</span>
+                    </div>
                     <div class="grid grid-cols-2 gap-4">
-                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1">Today's Earnings</div><div id="report-today-earn" class="text-xl font-bold text-emerald-400">0.0000</div></div>
-                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1">Today's Views</div><div id="report-today-views" class="text-xl font-bold text-white">0</div></div>
-                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1">Referral Earnings</div><div id="report-today-referral" class="text-xl font-bold text-emerald-400">0.0000</div></div>
-                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1">Average CPM</div><div id="report-today-cpm" class="text-xl font-bold text-indigo-400">0.0000</div></div>
+                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1"><i class="fa-solid fa-eye text-sky-400 mr-1"></i>Views</div><div id="report-today-views" class="text-xl font-bold text-white">0</div></div>
+                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1"><i class="fa-solid fa-wallet text-amber-400 mr-1"></i>Earnings</div><div id="report-today-earn" class="text-xl font-bold text-emerald-400">0.0000</div></div>
+                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1"><i class="fa-solid fa-users text-pink-400 mr-1"></i>Referral Earnings</div><div id="report-today-referral" class="text-xl font-bold text-emerald-400">0.0000</div></div>
+                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1"><i class="fa-solid fa-chart-line text-indigo-400 mr-1"></i>Average CPM</div><div id="report-today-cpm" class="text-xl font-bold text-indigo-400">0.0000</div></div>
                     </div>
                 </div>
                 <div class="mx-4 mb-6">
-                    <h3 class="text-sm font-bold text-white mb-3 uppercase tracking-wider"><i class="fa-solid fa-calendar-days text-indigo-400 mr-2"></i>This Month's Report</h3>
+                    <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                        <h3 class="text-sm font-bold text-white uppercase tracking-wider"><i class="fa-solid fa-calendar-days text-indigo-400 mr-2"></i>Monthly Report</h3>
+                        <input id="report-month-picker" type="month" class="bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-xs max-w-[155px]" aria-label="Select report month">
+                    </div>
                     <div class="grid grid-cols-2 gap-4">
-                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1">Earnings</div><div id="report-month-earn" class="text-xl font-bold text-emerald-400">0.0000</div></div>
-                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1">Views</div><div id="report-month-views" class="text-xl font-bold text-white">0</div></div>
+                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1"><i class="fa-solid fa-eye text-sky-400 mr-1"></i>Views</div><div id="report-month-views" class="text-xl font-bold text-white">0</div></div>
+                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1"><i class="fa-solid fa-wallet text-amber-400 mr-1"></i>Earnings</div><div id="report-month-earn" class="text-xl font-bold text-emerald-400">0.0000</div></div>
+                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1"><i class="fa-solid fa-users text-pink-400 mr-1"></i>Referral Earnings</div><div id="report-month-referral" class="text-xl font-bold text-emerald-400">0.0000</div></div>
+                        <div class="glass-panel p-4 text-center"><div class="text-slate-400 text-xs uppercase mb-1"><i class="fa-solid fa-chart-line text-indigo-400 mr-1"></i>Average CPM</div><div id="report-month-cpm" class="text-xl font-bold text-indigo-400">0.0000</div></div>
                     </div>
                 </div>
             </div>
@@ -489,11 +497,7 @@
                 await loadAuthenticatedProfile(sessionData.session || authData.session);
             } catch (error) {
                 console.error('TGShortUrl authentication error:', error);
-                alert(error?.message?.includes('Signups not allowed')
-    ? 'Currently Registration Closed!! For more info contact admin.'
-    : error?.message?.includes('Invalid login credentials')
-    ? 'Invalid email or password.'
-    : (error?.message || 'Login failed. Please try again.'));
+                alert(error?.message || 'Login failed. Please try again.');
             } finally {
                 button.disabled = false;
                 button.innerText = isLoginMode ? 'Login' : 'Register';
@@ -595,45 +599,90 @@
 
         }
 
+        function localDateKey(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function localRangeFromDateKey(key) {
+            const [y, m, d] = key.split('-').map(Number);
+            return {
+                start: new Date(y, m - 1, d).toISOString(),
+                end: new Date(y, m - 1, d + 1).toISOString()
+            };
+        }
+
+        function localRangeFromMonthKey(key) {
+            const [y, m] = key.split('-').map(Number);
+            return {
+                start: new Date(y, m - 1, 1).toISOString(),
+                end: new Date(y, m, 1).toISOString()
+            };
+        }
+
+        async function getReportStats(start, end, linkIds, userId) {
+            const [logsResult, referralResult] = await Promise.all([
+                dbClient.from('earning_logs').select('amount,source').eq('user_id', userId)
+                    .gte('created_at', start).lt('created_at', end),
+                dbClient.from('earning_logs').select('amount').eq('user_id', userId)
+                    .eq('source', 'referral_commission').gte('created_at', start).lt('created_at', end)
+            ]);
+            if (logsResult.error) throw logsResult.error;
+            if (referralResult.error) throw referralResult.error;
+
+            const logs = logsResult.data || [];
+            const earnings = logs.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+            const referralEarnings = (referralResult.data || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
+            let views = 0;
+            if (linkIds.length) {
+                const { count, error } = await dbClient.from('click_logs').select('id', { count: 'exact', head: true })
+                    .in('link_id', linkIds).gte('created_at', start).lt('created_at', end);
+                if (error) throw error;
+                views = count || 0;
+            }
+            return { earnings, referralEarnings, views, cpm: views > 0 ? (earnings / views) * 1000 : 0 };
+        }
+
+        function renderReportStats(prefix, stats) {
+            document.getElementById(`${prefix}-earn`).innerText = stats.earnings.toFixed(4);
+            document.getElementById(`${prefix}-views`).innerText = stats.views.toLocaleString();
+            document.getElementById(`${prefix}-referral`).innerText = stats.referralEarnings.toFixed(4);
+            document.getElementById(`${prefix}-cpm`).innerText = stats.cpm.toFixed(4);
+        }
+
         async function loadDashboardReports() {
             const u = currentUserData || {};
-            const todayEarn = Number(u.today_earnings || 0);
-            document.getElementById('report-today-earn').innerText = todayEarn.toFixed(4);
-            document.getElementById('report-today-views').innerText = Number(u.today_clicks || 0);
-            document.getElementById('report-today-cpm').innerText = Number(adminSettings.cpm || 0).toFixed(4);
-
-            // Use local calendar boundaries, converted to ISO for Supabase timestamps.
+            if (!u.id) return;
             const now = new Date();
-            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-            const tomorrowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
-            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-            const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+            const monthPicker = document.getElementById('report-month-picker');
+            const todayKey = localDateKey(now);
+            const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            if (monthPicker && !monthPicker.value) monthPicker.value = monthKey;
+            if (monthPicker) monthPicker.max = monthKey;
 
-            const { data: todayReferralRows, error: todayReferralError } = await dbClient
-                .from('earning_logs').select('amount').eq('user_id', u.id)
-                .eq('source', 'referral_commission').gte('created_at', todayStart).lt('created_at', tomorrowStart);
-            document.getElementById('report-today-referral').innerText = todayReferralError
-                ? '—'
-                : (todayReferralRows || []).reduce((sum, row) => sum + Number(row.amount || 0), 0).toFixed(4);
-
-            const { data: monthLogs, error: monthLogError } = await dbClient
-                .from('earning_logs').select('amount').eq('user_id', u.id)
-                .gte('created_at', monthStart).lt('created_at', nextMonth);
-            document.getElementById('report-month-earn').innerText = monthLogError
-                ? '—'
-                : (monthLogs || []).reduce((sum, row) => sum + Number(row.amount || 0), 0).toFixed(4);
-
-            const { data: userLinks } = await dbClient.from('links').select('id').eq('user_id', u.id);
-            const linkIds = (userLinks || []).map(x => x.id);
-            let monthlyViews = 0;
-            if (linkIds.length) {
-                const { count: ownedCount, error: viewsError } = await dbClient.from('click_logs')
-                    .select('id', { count: 'exact', head: true }).in('link_id', linkIds)
-                    .gte('created_at', monthStart).lt('created_at', nextMonth);
-                monthlyViews = viewsError ? 0 : (ownedCount || 0);
+            try {
+                const { data: userLinks, error: linksError } = await dbClient.from('links').select('id').eq('user_id', u.id);
+                if (linksError) throw linksError;
+                const linkIds = (userLinks || []).map(row => row.id);
+                const dayRange = localRangeFromDateKey(todayKey);
+                const monthRange = localRangeFromMonthKey(monthPicker.value || monthKey);
+                const [dailyStats, monthlyStats] = await Promise.all([
+                    getReportStats(dayRange.start, dayRange.end, linkIds, u.id),
+                    getReportStats(monthRange.start, monthRange.end, linkIds, u.id)
+                ]);
+                renderReportStats('report-today', dailyStats);
+                renderReportStats('report-month', monthlyStats);
+            } catch (error) {
+                console.error('Report loading error:', error);
+                ['report-today-earn','report-today-views','report-today-referral','report-today-cpm',
+                 'report-month-earn','report-month-views','report-month-referral','report-month-cpm']
+                    .forEach(id => { const el = document.getElementById(id); if (el) el.innerText = '—'; });
             }
-            document.getElementById('report-month-views').innerText = monthlyViews;
         }
+
+        document.getElementById('report-month-picker')?.addEventListener('change', loadDashboardReports);
 
         async function loadLinks() {
             const { data } = await dbClient.from('links').select('*').eq('user_id', currentUserData.id).order('created_at', { ascending: false }).limit(30);
@@ -650,9 +699,7 @@
             const details = document.getElementById('withdraw-details').value.trim();
             const tgLink = document.getElementById('withdraw-telegram').value.trim();
             
-            if (!method || !details || !tgLink) {
-    return alert("Please enter valid UPI details and your traffic source (Telegram Channel/Group Link), then submit your withdrawal request.");
-            }
+            if(!method || !details || !tgLink) return alert("All fields including Telegram Link are required.");
             
             // request_withdrawal RPC expects the minimum in INR.
             // Admin Panel stores it in USD, so convert using the app's ₹85/USD rate.
