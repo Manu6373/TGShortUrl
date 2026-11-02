@@ -42,9 +42,11 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Backend configuration missing.' });
   }
 
-  const { short_id, init_data, ad_provider } = req.body || {};
+  const { short_id, init_data, ad_providers } = req.body || {};
   if (!short_id || !init_data) return res.status(400).json({ error: 'short_id and init_data required.' });
-  if (ad_provider !== 'monetag') return res.status(400).json({ error: 'Invalid ad provider.' });
+  if (!Array.isArray(ad_providers) || !ad_providers.length || ad_providers.some(p => !['monetag', 'adsbitvex'].includes(p))) {
+    return res.status(400).json({ error: 'Invalid ad provider sequence.' });
+  }
 
   const telegramUser = verifyTelegramInitData(init_data, botToken);
   if (!telegramUser) return res.status(401).json({ error: 'Telegram session invalid.' });
@@ -57,6 +59,14 @@ export default async function handler(req, res) {
   try {
     const { data: link, error: linkError } = await db.from('links').select('*').eq('short_id', short_id).maybeSingle();
     if (linkError || !link) return res.status(404).json({ error: 'Link not found.' });
+
+    const { data: providerSettings, error: providerSettingsError } = await db.from('settings').select('active_reward_ad').order('id', { ascending: true }).limit(1).maybeSingle();
+    if (providerSettingsError) throw providerSettingsError;
+    const configuredProviders = String(providerSettings?.active_reward_ad || 'monetag').toLowerCase().split(',').map(p => p.trim()).filter(p => ['monetag', 'adsbitvex'].includes(p));
+    const submittedProviders = ad_providers.map(p => String(p).toLowerCase());
+    if (configuredProviders.length !== submittedProviders.length || configuredProviders.some((p, i) => p !== submittedProviders[i])) {
+      return res.status(400).json({ error: 'The required ad sequence was not completed.' });
+    }
 
     const { data: owner, error: ownerError } = await db.from('users').select('id,telegram_id,balance,today_earnings,total_earnings,total_clicks,today_clicks').eq('id', link.user_id).maybeSingle();
     if (ownerError || !owner) return res.status(404).json({ error: 'Link owner not found.' });
