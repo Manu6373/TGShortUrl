@@ -302,8 +302,9 @@
             return list.filter(p => p && p.enabled && p.type === 'rewarded').sort((a,b) => Number(a.order||0)-Number(b.order||0));
         }
         function getConfiguredRewardProviders() {
+            const hasDynamicProviderConfig = Array.isArray(adminSettings.ad_providers) && adminSettings.ad_providers.length > 0;
             const dynamic = getDynamicRewardProviders();
-            if (dynamic.length) return dynamic;
+            if (hasDynamicProviderConfig) return dynamic;
             const raw = String(adminSettings.active_reward_ad || 'monetag').toLowerCase();
             const valid = raw.split(',').map(x => x.trim()).filter(x => ['monetag', 'adsbitvex'].includes(x));
             return [...new Set(valid.length ? valid : ['monetag'])];
@@ -311,17 +312,32 @@
         function resolveWindowFunction(path) {
             return String(path || '').replace(/^window\./, '').split('.').reduce((obj, key) => obj && obj[key], window);
         }
-        async function runRewardProvider(provider) {
-            if (typeof provider === 'object') {
-                const fn = resolveWindowFunction(provider.function_name);
-                if (typeof fn !== 'function') throw new Error(`${provider.name} ad is not ready. Please try again.`);
-                await Promise.resolve(fn());
-                return;
+        async function waitForProviderFunction(functionName, providerName, timeoutMs = 10000) {
+            const started = Date.now();
+            while (Date.now() - started < timeoutMs) {
+                const fn = resolveWindowFunction(functionName);
+                if (typeof fn === 'function') return fn;
+                await new Promise(resolve => setTimeout(resolve, 250));
             }
-            const functionName = provider === 'monetag' ? (adminSettings.monetag_reward_func || 'show_12122788') : (adminSettings.adsbitvex_reward_func || 'window.showadsbitvex');
-            const fn = resolveWindowFunction(functionName);
-            if (typeof fn !== 'function') throw new Error(`${provider} ad SDK is not ready. Please try again.`);
-            await Promise.resolve(fn());
+            throw new Error(`${providerName} SDK did not become ready.`);
+        }
+        async function runRewardProvider(provider) {
+            const isDynamic = provider && typeof provider === 'object';
+            const providerName = isDynamic ? (provider.name || provider.id) : provider;
+            const functionName = isDynamic
+                ? provider.function_name
+                : (provider === 'monetag' ? (adminSettings.monetag_reward_func || 'show_12122788') : (adminSettings.adsbitvex_reward_func || 'window.showadsbitvex'));
+            const fn = await waitForProviderFunction(functionName, providerName);
+            // Provider SDK must resolve its Promise only after the rewarded ad completes.
+            // A client-side Promise is not independent server-side proof of an impression.
+            const result = await Promise.race([
+                Promise.resolve().then(() => fn()),
+                new Promise((_, reject) => setTimeout(() => reject(new Error(`${providerName} ad timed out.`)), 45000))
+            ]);
+            if (result === false || result?.success === false || ['failed', 'no_fill', 'cancelled', 'canceled'].includes(String(result?.status || '').toLowerCase())) {
+                throw new Error(`${providerName} did not complete a rewarded ad.`);
+            }
+            return isDynamic ? String(provider.id) : String(provider);
         }
         function loadBannerAd() {
             const host = document.getElementById('ad-banner-container');
@@ -821,26 +837,41 @@
 
         async function executeAdClick() {
             const btn = document.getElementById('btn-watch-ad');
+            if (btn.dataset.busy === '1') return;
+            btn.dataset.busy = '1';
             btn.disabled = true;
             const waitingIndicator = document.getElementById('ad-waiting-indicator');
             waitingIndicator.classList.remove('hidden');
-            btn.innerHTML = 'Loading ad...';
             const providers = getConfiguredRewardProviders();
-            try {
-                for (let i = 0; i < providers.length; i++) {
-                    const provider = providers[i];
-                    btn.innerHTML = 'Loading ad...';
-                    await runRewardProvider(provider);
+            const minimumAds = Math.max(1, Math.min(20, parseInt(adminSettings.ads_per_link, 10) || 1));
+            const completedProviders = [];
+            const failedProviders = [];
+
+            for (const provider of providers) {
+                if (completedProviders.length >= minimumAds) break;
+                const providerName = typeof provider === 'object' ? (provider.name || provider.id) : provider;
+                btn.innerHTML = `Loading ${providerName}... (${completedProviders.length}/${minimumAds})`;
+                try {
+                    const completedId = await runRewardProvider(provider);
+                    if (!completedProviders.includes(completedId)) completedProviders.push(completedId);
+                } catch (error) {
+                    console.warn(`${providerName} rewarded ad skipped:`, error);
+                    failedProviders.push(providerName);
                 }
-                btn.innerHTML = 'Loading ad...';
-                await handleAdSuccess(providers);
-            } catch (error) {
-                console.error('Rewarded ad flow failed:', error);
+            }
+
+            if (completedProviders.length < minimumAds) {
                 waitingIndicator.classList.add('hidden');
+                btn.dataset.busy = '0';
                 btn.disabled = false;
                 btn.innerHTML = 'Try Again';
-                alert(error?.message || 'Ad could not be completed. Please try again.');
+                const remaining = minimumAds - completedProviders.length;
+                alert(`Only ${completedProviders.length} of ${minimumAds} required ads completed. ${remaining} more successful ad(s) needed. Please try again.`);
+                return;
             }
+
+            btn.innerHTML = 'Unlocking link...';
+            await handleAdSuccess(completedProviders);
         }
 
         async function handleAdSuccess(providers) {
@@ -848,7 +879,7 @@
             try {
                 const res = await fetch(`${VERCEL_API_URL}/reward`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ short_id: window.currentShortId, init_data: tg.initData, ad_providers: providers.map(p => typeof p === 'object' ? p.id : p) })
+                    body: JSON.stringify({ short_id: window.currentShortId, init_data: tg.initData, ad_providers: providers })
                 });
                 const result = await res.json();
                 if (!res.ok || !result.success) throw new Error(result.error || 'Fraud check failed.');
@@ -864,7 +895,7 @@
                     btn.classList.add('hidden');
                     return;
                 }
-                btn.disabled = false; btn.innerHTML = 'Try Again'; alert(e.message); return;
+                btn.dataset.busy = '0'; btn.disabled = false; btn.innerHTML = 'Try Again'; alert(e.message); return;
             }
 
             btn.classList.add('hidden');
