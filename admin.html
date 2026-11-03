@@ -89,8 +89,8 @@
                 <label class="block text-xs text-slate-400 mb-1">Monetag Function Name</label><input type="text" id="set-mone-func" class="w-full bg-slate-900 border border-slate-700 p-2 text-white mb-4">
                 <label class="block text-xs text-slate-400 mb-1">AdsBitVex Rewarded SDK Code</label><textarea id="set-adsbitvex-script" rows="2" class="w-full bg-slate-900 border border-slate-700 p-2 text-white mb-4" placeholder="AdsBitVex SDK script"></textarea>
                 <label class="block text-xs text-slate-400 mb-1">AdsBitVex Function Name</label><input type="text" id="set-adsbitvex-func" value="window.showadsbitvex" class="w-full bg-slate-900 border border-slate-700 p-2 text-white mb-4">
-                <label class="block text-xs text-slate-400 mb-1">Reward Ad Sequence</label><select id="set-active-reward-ad" class="w-full bg-slate-900 border border-slate-700 p-2 text-white mb-4"><option value="monetag">Monetag only</option><option value="adsbitvex">AdsBitVex only</option><option value="monetag,adsbitvex">Monetag → AdsBitVex (both required)</option><option value="adsbitvex,monetag">AdsBitVex → Monetag (both required)</option></select>
-                <p class="text-xs text-amber-300 mb-4">GET LINK is unlocked only after every selected provider Promise completes successfully. This is a client-side SDK completion check; it is not independent server-side proof of an ad view.</p>
+                <label class="block text-xs text-slate-400 mb-1">Minimum Successful Ads Required</label><input id="set-ads-per-link" type="number" min="1" max="20" step="1" value="1" class="w-full bg-slate-900 border border-slate-700 p-2 text-white mb-2">
+                <p class="text-xs text-slate-500 mb-4">The app tries enabled rewarded providers in sequence order, skips failed/unavailable ads, and unlocks GET LINK after this many successful ad completions.</p>
                 <label class="block text-xs text-slate-400 mb-1">AdsBitVex Banner Placement ID</label><input type="text" id="set-banner-placement" placeholder="Enter your placement ID" class="w-full bg-slate-900 border border-slate-700 p-2 text-white mb-4">
                 <label class="block text-xs text-slate-400 mb-1">Maintenance Mode</label><select id="set-maint" class="w-full bg-slate-900 border border-slate-700 p-2 text-white mb-4"><option value="false">Off</option><option value="true">On</option></select>
             </div>
@@ -103,7 +103,7 @@
             <div><h2 class="text-2xl font-bold">Ad Providers</h2><p class="text-sm text-slate-400 mt-1">Add and manage rewarded ad networks without editing website code.</p></div>
             <button onclick="addAdProvider()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-3 rounded-lg font-bold"><i class="fa-solid fa-plus mr-2"></i>Add New Ad</button>
         </div>
-        <div class="glass-panel p-4 mb-5"><p class="text-xs text-amber-300">Rewarded providers run in ascending sequence order. A provider must return a Promise that resolves when its ad flow completes. This browser-side signal is not independent proof of a genuine ad view.</p></div>
+        <div class="glass-panel p-4 mb-5"><p class="text-xs text-amber-300">Enabled rewarded providers are tried in ascending sequence order. Failed or unavailable providers are skipped. The app stops after the Admin's minimum number of successful ads. Each provider's function should return a Promise that resolves only after its rewarded ad completes. Browser-side completion is not independent server-side proof of a genuine ad view.</p></div>
         <div id="provider-list" class="space-y-4"><p class="text-slate-400 text-sm">No providers added yet. Tap “Add New Ad” to begin.</p></div>
         <div class="mt-6 flex flex-wrap gap-3"><button onclick="saveAdProviders()" class="bg-emerald-600 hover:bg-emerald-500 px-5 py-3 rounded-lg font-bold">Save Ad Providers</button><button onclick="loadAdProviders()" class="bg-slate-700 px-5 py-3 rounded-lg font-bold">Reload</button></div>
     </template>
@@ -256,7 +256,7 @@
                 document.getElementById('set-mone-func').value = d.monetag_reward_func || 'show_12122788';
                 document.getElementById('set-adsbitvex-script').value = d.adsbitvex_reward_script || '<script src="https://sdk.adsbitvex.com/functions/v1/ad-script?appid=000540"><\/script>';
                 document.getElementById('set-adsbitvex-func').value = d.adsbitvex_reward_func || 'window.showadsbitvex';
-                document.getElementById('set-active-reward-ad').value = d.active_reward_ad || 'monetag';
+                document.getElementById('set-ads-per-link').value = Math.max(1, Number(d.ads_per_link) || 1);
                 document.getElementById('set-maint').value = d.maintenance_mode ? "true" : "false";
                 document.getElementById('set-banner-placement').value = d.adsbitvex_banner_code || '';
             }
@@ -275,7 +275,7 @@
                 monetag_reward_func: document.getElementById('set-mone-func').value,
                 adsbitvex_reward_script: document.getElementById('set-adsbitvex-script').value,
                 adsbitvex_reward_func: document.getElementById('set-adsbitvex-func').value,
-                active_reward_ad: document.getElementById('set-active-reward-ad').value,
+                ads_per_link: Math.max(1, Math.min(20, parseInt(document.getElementById('set-ads-per-link').value, 10) || 1)),
                 adsbitvex_banner_code: document.getElementById('set-banner-placement').value.trim()
             };
             if (!Number.isFinite(req.min_withdraw) || req.min_withdraw <= 0) {
@@ -316,7 +316,7 @@
         }
         function escapeHtml(v) { return String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
         function escapeAttr(v) { return escapeHtml(v); }
-        window.addAdProvider = function() { collectProviderInputs(); adProviders.push({ id:'', name:'', type:'rewarded', script:'', function_name:'', order:adProviders.length+1, enabled:true }); renderAdProviders(); };
+        window.addAdProvider = function() { collectProviderInputs(); adProviders.push({ id:'', name:'', type:'rewarded', script:'', function_name:'', order:(Math.max(0,...adProviders.map(p=>Number(p.order)||0))+1), enabled:true }); renderAdProviders(); };
         function collectProviderInputs() {
             document.querySelectorAll('#provider-list [data-provider-index]').forEach(card => {
                 const i=Number(card.dataset.providerIndex); if (!adProviders[i]) return;
