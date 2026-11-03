@@ -236,6 +236,7 @@
             <div id="link-info-container" class="mb-6 text-sm text-slate-300">
                 <i class="fa-solid fa-link text-indigo-400 mr-2"></i><span id="ad-link-desc">Unlocking Secure Link...</span>
             </div>
+            <div id="self-click-warning" class="hidden rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-300 p-4 mb-5 text-sm font-semibold" role="alert">Self-click detected! Reward will not be counted.</div>
             <div id="ad-timer-container" class="w-24 h-24 mx-auto rounded-full bg-slate-900 border-4 border-slate-700 flex items-center justify-center mb-6 relative shadow-inner">
                 <span id="ad-timer-text" class="text-3xl font-bold text-white">5</span>
             </div>
@@ -793,12 +794,16 @@
         }
 
         // AD REWARD FLOW (Monetag Only)
-        function setupAdStep() {
+        async function setupAdStep() {
             const timerEl = document.getElementById('ad-timer-text');
             const btn = document.getElementById('btn-watch-ad');
+            btn.disabled = true;
+            // Do not interrupt the rewarded-ad sequence with a self-click pre-check.
+            // Self-click awareness is shown only after all configured ads finish.
+
             let timeLeft = Math.max(0, Math.min(300, Number(adminSettings.ad_timer) || 5));
             btn.disabled = true; btn.innerHTML = `Wait ${timeLeft}s...`;
-            
+            timerEl.innerText = timeLeft;
             const interval = setInterval(() => {
                 timeLeft--;
                 timerEl.innerText = Math.max(0, timeLeft);
@@ -849,6 +854,16 @@
                 if (!res.ok || !result.success) throw new Error(result.error || 'Fraud check failed.');
             } catch (e) {
                 document.getElementById('ad-waiting-indicator').classList.add('hidden');
+                const warning = document.getElementById('self-click-warning');
+                const isSelfClick = /self-clicks are not eligible|self.click detected/i.test(e.message || '');
+                if (isSelfClick) {
+                    // Awareness only: the ads have already completed; the server rejects reward.
+                    warning.textContent = 'Self-click detected! Reward will not be counted.';
+                    warning.classList.remove('hidden');
+                    document.getElementById('ad-step-title').innerText = 'Self-click detected';
+                    btn.classList.add('hidden');
+                    return;
+                }
                 btn.disabled = false; btn.innerHTML = 'Try Again'; alert(e.message); return;
             }
 
