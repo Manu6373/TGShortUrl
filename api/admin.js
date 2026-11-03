@@ -61,6 +61,7 @@ export default async function handler(req, res) {
         'refer_reward_inr',
         'min_withdraw',
         'ad_timer',
+        'ads_per_link',
         'ip_restrict_hours',
         'monetag_reward_script',
         'monetag_reward_func',
