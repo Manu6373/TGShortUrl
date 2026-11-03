@@ -165,10 +165,28 @@ export default async function handler(req, res) {
       });
     }
 
+    async function addRegisteredEmails(rows) {
+      return Promise.all((rows || []).map(async (row) => {
+        let email = row.email || '';
+        const authId = row.auth_id || row.auth_user_id;
+        if (!email && authId) {
+          try {
+            const { data: authUserData } = await db.auth.admin.getUserById(authId);
+            email = authUserData?.user?.email || '';
+          } catch (emailError) {
+            console.warn('Could not resolve registered email for profile:', row.id, emailError?.message);
+          }
+        }
+        return { ...row, email };
+      }));
+    }
+
     if (action === 'users') {
-      const r = await db.from('users').select('*').order('created_at', { ascending: false }).limit(1000);
+      const r = await db.from('users')
+        .select('id,auth_id,auth_user_id,email,telegram_id,first_name,last_name,username,balance,total_earnings,total_clicks,today_clicks,is_blocked,is_admin,created_at')
+        .order('created_at', { ascending: false }).limit(1000);
       if (r.error) throw r.error;
-      return res.json({ data: r.data });
+      return res.json({ data: await addRegisteredEmails(r.data) });
     }
 
     if (action === 'block') {
@@ -181,7 +199,29 @@ export default async function handler(req, res) {
     if (action === 'withdrawals') {
       const r = await db.from('withdrawals').select('*').order('created_at', { ascending: false }).limit(1000);
       if (r.error) throw r.error;
-      return res.json({ data: r.data });
+      const userIds = [...new Set((r.data || []).map(w => w.user_id).filter(Boolean))];
+      let profiles = [];
+      if (userIds.length) {
+        const profileResult = await db.from('users')
+          .select('id,auth_id,auth_user_id,email,telegram_id,first_name,last_name,username')
+          .in('id', userIds);
+        if (profileResult.error) throw profileResult.error;
+        profiles = await addRegisteredEmails(profileResult.data);
+      }
+      const profileMap = new Map(profiles.map(profile => [String(profile.id), profile]));
+      const enriched = (r.data || []).map(withdrawal => {
+        const profile = profileMap.get(String(withdrawal.user_id)) || {};
+        const tgName = [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim();
+        return {
+          ...withdrawal,
+          user_details: {
+            tg_name: tgName || 'N/A',
+            email: profile.email || 'N/A',
+            username: profile.username ? `@${String(profile.username).replace(/^@/, '')}` : 'N/A'
+          }
+        };
+      });
+      return res.json({ data: enriched });
     }
 
     if (action === 'withdrawal') {
