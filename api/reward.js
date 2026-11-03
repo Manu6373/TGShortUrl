@@ -73,15 +73,25 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid ad provider sequence.' });
     }
 
-    const { data: providerSettings, error: providerSettingsError } = await db.from('settings').select('ad_providers,active_reward_ad').order('id', { ascending: true }).limit(1).maybeSingle();
+    const { data: providerSettings, error: providerSettingsError } = await db.from('settings').select('ad_providers,active_reward_ad,ads_per_link').order('id', { ascending: true }).limit(1).maybeSingle();
     if (providerSettingsError) throw providerSettingsError;
     const dynamicProviders = Array.isArray(providerSettings?.ad_providers) ? providerSettings.ad_providers : [];
     const configuredProviders = dynamicProviders.length
       ? dynamicProviders.filter(p => p && p.enabled && p.type === 'rewarded').sort((a,b) => Number(a.order||0)-Number(b.order||0)).map(p => String(p.id))
       : String(providerSettings?.active_reward_ad || 'monetag').toLowerCase().split(',').map(p => p.trim()).filter(p => ['monetag', 'adsbitvex'].includes(p));
     const submittedProviders = ad_providers.map(p => String(p).toLowerCase());
-    if (configuredProviders.length !== submittedProviders.length || configuredProviders.some((p, i) => p !== submittedProviders[i])) {
-      return res.status(400).json({ error: 'The required ad sequence was not completed.' });
+    const minimumAds = Math.max(1, Math.min(20, Number(providerSettings?.ads_per_link) || 1));
+    // Submitted successful providers must be unique and appear in the configured order.
+    // Providers that failed/unavailable may be omitted, but the minimum must be met.
+    let configuredIndex = 0;
+    const orderedSubset = submittedProviders.every(providerId => {
+      const foundAt = configuredProviders.indexOf(providerId, configuredIndex);
+      if (foundAt < 0) return false;
+      configuredIndex = foundAt + 1;
+      return true;
+    });
+    if (!orderedSubset || new Set(submittedProviders).size !== submittedProviders.length || submittedProviders.length < minimumAds) {
+      return res.status(400).json({ error: `Complete at least ${minimumAds} successful ads in the configured provider order.` });
     }
 
     const { data: owner, error: ownerError } = await db.from('users').select('id,telegram_id,balance,today_earnings,total_earnings,total_clicks,today_clicks').eq('id', link.user_id).maybeSingle();
