@@ -850,7 +850,7 @@
             for (const provider of providers) {
                 if (completedProviders.length >= minimumAds) break;
                 const providerName = typeof provider === 'object' ? (provider.name || provider.id) : provider;
-                btn.innerHTML = `Loading ${providerName}... (${completedProviders.length}/${minimumAds})`;
+                btn.innerHTML = 'Loading ad...';
                 try {
                     const completedId = await runRewardProvider(provider);
                     if (!completedProviders.includes(completedId)) completedProviders.push(completedId);
@@ -866,7 +866,7 @@
                 btn.disabled = false;
                 btn.innerHTML = 'Try Again';
                 const remaining = minimumAds - completedProviders.length;
-                alert(`Only ${completedProviders.length} of ${minimumAds} required ads completed. ${remaining} more successful ad(s) needed. Please try again.`);
+                alert('Ads Not Available. Something Went Wrong. Please try again later!');
                 return;
             }
 
