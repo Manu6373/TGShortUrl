@@ -26,6 +26,7 @@
             <h1 class="text-xl font-bold text-indigo-500 mb-8"><i class="fa-solid fa-bolt mr-2"></i>Admin Panel</h1>
             <nav class="space-y-2 flex-1">
                 <button class="nav-btn w-full text-left p-3 rounded bg-indigo-600 text-white" onclick="switchTab('dashboard', this)">Dashboard Stats</button>
+                <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('users', this)">User Management</button>
                 <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('withdrawals', this)">Withdrawals</button>
                 <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('settings', this)">System Settings</button>
                 <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('providers', this)">Ad Providers</button>
@@ -53,6 +54,20 @@
         </div>
     </template>
     
+    <template id="tpl-users">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <h2 class="text-2xl font-bold">User Management</h2>
+            <input id="user-search" type="search" placeholder="Search name, email or username..." oninput="filterAdminUsers()" class="w-full sm:w-80 bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-lg">
+        </div>
+        <div class="glass-panel overflow-x-auto shadow-xl">
+            <table class="w-full text-left text-sm whitespace-nowrap">
+                <thead class="bg-slate-900 text-slate-400 border-b border-slate-800"><tr><th class="p-4">TG Name</th><th class="p-4">Registered Email</th><th class="p-4">TG Username</th><th class="p-4">Balance</th><th class="p-4">Total Earnings</th><th class="p-4">Status</th><th class="p-4 text-right">Action</th></tr></thead>
+                <tbody id="admin-user-list"><tr><td colspan="7" class="p-4 text-slate-400">Loading users...</td></tr></tbody>
+            </table>
+        </div>
+        <p id="user-list-count" class="text-xs text-slate-500 mt-3"></p>
+    </template>
+
     <template id="tpl-withdrawals">
         <h2 class="text-2xl font-bold mb-6">Withdrawal Management</h2>
         <div class="glass-panel overflow-x-auto shadow-xl"><table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-slate-900 text-slate-400 border-b border-slate-800"><tr><th class="p-4">User Details</th><th class="p-4">Method & TG Link</th><th class="p-4">Amount</th><th class="p-4">Status</th><th class="p-4 text-right">Action</th></tr></thead><tbody id="admin-withdraw-list"></tbody></table></div>
@@ -151,6 +166,7 @@
             if(btn) { btn.classList.add('bg-indigo-600', 'text-white'); btn.classList.remove('text-slate-400'); }
             document.getElementById('main-content').innerHTML = document.getElementById(`tpl-${tab}`).innerHTML;
             if(tab === 'dashboard') loadDash();
+            if(tab === 'users') loadUsers();
             if(tab === 'withdrawals') loadWithdrawals();
             if(tab === 'settings') loadSettings();
             if(tab === 'providers') loadAdProviders();
@@ -168,15 +184,55 @@
             document.getElementById('dash-w-rejected').innerText = data.withdrawals?.rejected || 0;
         }
 
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+        }
+
+        let adminUsers = [];
+        async function loadUsers() {
+            const tbody = document.getElementById('admin-user-list');
+            tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-slate-400">Loading users...</td></tr>';
+            const res = await fetchApi('users');
+            if (res.error) { tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-rose-400">${escapeHtml(res.error)}</td></tr>`; return; }
+            adminUsers = res.data || [];
+            filterAdminUsers();
+        }
+
+        window.filterAdminUsers = function() {
+            const query = (document.getElementById('user-search')?.value || '').trim().toLowerCase();
+            const filtered = adminUsers.filter(u => {
+                const name = [u.first_name, u.last_name].filter(Boolean).join(' ');
+                return [name, u.email, u.username, u.telegram_id].some(value => String(value || '').toLowerCase().includes(query));
+            });
+            const tbody = document.getElementById('admin-user-list');
+            if (!tbody) return;
+            tbody.innerHTML = filtered.length ? filtered.map(u => {
+                const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || 'N/A';
+                const username = u.username ? '@' + String(u.username).replace(/^@/, '') : 'N/A';
+                return `<tr class="border-b border-slate-800"><td class="p-4 font-semibold">${escapeHtml(name)}</td><td class="p-4">${escapeHtml(u.email || 'N/A')}</td><td class="p-4">${escapeHtml(username)}</td><td class="p-4">$${Number(u.balance || 0).toFixed(4)}</td><td class="p-4 text-emerald-400">$${Number(u.total_earnings || 0).toFixed(4)}</td><td class="p-4"><span class="${u.is_blocked ? 'text-rose-400' : 'text-emerald-400'}">${u.is_blocked ? 'Blocked' : 'Active'}</span></td><td class="p-4 text-right">${u.is_admin ? '<span class="text-slate-500">Admin</span>' : `<button onclick="toggleUserBlock('${u.id}', ${!u.is_blocked})" class="px-3 py-1 rounded ${u.is_blocked ? 'bg-emerald-700' : 'bg-rose-700'} text-white">${u.is_blocked ? 'Unblock' : 'Block'}</button>`}</td></tr>`;
+            }).join('') : '<tr><td colspan="7" class="p-4 text-slate-400">No users found.</td></tr>';
+            const count = document.getElementById('user-list-count');
+            if (count) count.textContent = `Showing ${filtered.length} of ${adminUsers.length} users`;
+        };
+
+        window.toggleUserBlock = async function(id, block) {
+            const action = block ? 'block' : 'unblock';
+            if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+            const result = await fetchApi('block', { id, block });
+            if (result.error) alert(result.error);
+            else loadUsers();
+        };
+
         async function loadWithdrawals() {
             const res = await fetchApi('withdrawals');
             const tbody = document.getElementById('admin-withdraw-list'); tbody.innerHTML = '';
+            if (res.error) { tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-rose-400">${escapeHtml(res.error)}</td></tr>`; return; }
             res.data?.forEach(w => {
                 let act = '';
                 if(w.status === 'pending') act = `<button onclick="processW('${w.id}', 'approved')" class="bg-indigo-600 px-3 py-1 rounded text-white mr-1">Approve</button><button onclick="processW('${w.id}', 'rejected')" class="bg-red-600 px-3 py-1 rounded text-white">Reject</button>`;
                 else if(w.status === 'approved') act = `<button onclick="processW('${w.id}', 'paid')" class="bg-emerald-600 px-3 py-1 rounded text-white">Mark as Paid</button>`;
-                
-                tbody.innerHTML += `<tr class="border-b border-slate-800"><td class="p-4"><div class="font-bold">${w.username}</div><div class="text-xs text-slate-500">${w.user_id.substring(0,8)}</div></td><td class="p-4 text-xs font-mono"><b>${w.method}</b><br>${w.details}<br><a href="${w.telegram_link}" target="_blank" class="text-indigo-400 underline">TG Link</a></td><td class="p-4 font-bold">$${w.amount.toFixed(4)}<br><span class="text-xs text-emerald-400">₹${(w.amount*85).toFixed(2)}</span></td><td class="p-4 uppercase text-xs font-bold">${w.status}</td><td class="p-4 text-right">${act}</td></tr>`;
+                const details = w.user_details || {};
+                tbody.innerHTML += `<tr class="border-b border-slate-800"><td class="p-4"><div class="font-bold">${escapeHtml(details.tg_name || 'N/A')}</div><div class="text-xs text-slate-400">${escapeHtml(details.email || 'N/A')}</div><div class="text-xs text-slate-500">${escapeHtml(details.username || 'N/A')}</div></td><td class="p-4 text-xs font-mono"><b>${escapeHtml(w.method)}</b><br>${escapeHtml(w.details)}<br><a href="${escapeHtml(w.telegram_link)}" target="_blank" rel="noopener" class="text-indigo-400 underline">TG Link</a></td><td class="p-4 font-bold">$${Number(w.amount || 0).toFixed(4)}<br><span class="text-xs text-emerald-400">₹${(Number(w.amount || 0)*85).toFixed(2)}</span></td><td class="p-4 uppercase text-xs font-bold">${escapeHtml(w.status)}</td><td class="p-4 text-right">${act}</td></tr>`;
             });
         }
 
