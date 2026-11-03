@@ -42,12 +42,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Backend configuration missing.' });
   }
 
-  const { short_id, init_data, ad_providers } = req.body || {};
+  const { short_id, init_data, ad_providers, check_self } = req.body || {};
   if (!short_id || !init_data) return res.status(400).json({ error: 'short_id and init_data required.' });
-  if (!Array.isArray(ad_providers) || !ad_providers.length || ad_providers.some(p => typeof p !== 'string' || !/^[a-z0-9-]{1,40}$/.test(p))) {
-    return res.status(400).json({ error: 'Invalid ad provider sequence.' });
-  }
-
   const telegramUser = verifyTelegramInitData(init_data, botToken);
   if (!telegramUser) return res.status(401).json({ error: 'Telegram session invalid.' });
 
@@ -59,6 +55,23 @@ export default async function handler(req, res) {
   try {
     const { data: link, error: linkError } = await db.from('links').select('*').eq('short_id', short_id).maybeSingle();
     if (linkError || !link) return res.status(404).json({ error: 'Link not found.' });
+
+    // Lightweight preflight used when a short link opens, before showing the ad timer.
+    // It does not create a click, claim, or earning record.
+    if (check_self === true) {
+      const sessionUser = verifyTelegramInitData(init_data, botToken);
+      if (!sessionUser) return res.status(401).json({ error: 'Telegram session invalid.' });
+      const { data: linkOwner, error: linkOwnerError } = await db.from('users')
+        .select('telegram_id').eq('id', link.user_id).maybeSingle();
+      if (linkOwnerError || !linkOwner) return res.status(404).json({ error: 'Link owner not found.' });
+      const isSelfClick = String(linkOwner.telegram_id) === sessionUser.id;
+      return res.status(200).json({ success: true, self_click: isSelfClick,
+        message: isSelfClick ? 'Self-click detected! Reward will not be counted.' : 'Link is eligible.' });
+    }
+
+    if (!Array.isArray(ad_providers) || !ad_providers.length || ad_providers.some(p => typeof p !== 'string' || !/^[a-z0-9-]{1,40}$/.test(p))) {
+      return res.status(400).json({ error: 'Invalid ad provider sequence.' });
+    }
 
     const { data: providerSettings, error: providerSettingsError } = await db.from('settings').select('ad_providers,active_reward_ad').order('id', { ascending: true }).limit(1).maybeSingle();
     if (providerSettingsError) throw providerSettingsError;
