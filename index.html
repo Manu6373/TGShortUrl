@@ -394,7 +394,37 @@
                 if (legacy.error) throw new Error('Could not load your profile: ' + legacy.error.message);
                 u = legacy.data;
             }
-            if (!u) throw new Error('Your login succeeded, but no TGShortUrl profile is linked to this account. Contact admin.');
+            // Create a profile only after an authenticated session exists.
+            // This handles accounts registered while email confirmation is enabled:
+            // signUp returns no session, so profile creation must wait until login.
+            if (!u) {
+                const tgUser = tg.initDataUnsafe?.user || {};
+                const profile = {
+                    auth_id: authId,
+                    email: session.user.email || '',
+                    telegram_id: tgUser.id || Date.now(),
+                    first_name: tgUser.first_name || session.user.user_metadata?.first_name ||
+                        (session.user.email || 'User').split('@')[0],
+                    username: tgUser.username || session.user.user_metadata?.username || ''
+                };
+                const { data: created, error: createError } = await dbClient
+                    .from('users').insert([profile]).select('*').single();
+
+                if (createError) {
+                    // A concurrent login may have created the profile first.
+                    if (createError.code === '23505') {
+                        const retry = await dbClient.from('users').select('*')
+                            .eq('auth_id', authId).maybeSingle();
+                        if (retry.error) throw new Error('Could not load your profile: ' + retry.error.message);
+                        u = retry.data;
+                    } else {
+                        throw new Error('Your account is verified, but profile creation failed: ' + createError.message);
+                    }
+                } else {
+                    u = created;
+                }
+            }
+            if (!u) throw new Error('Your login succeeded, but your TGShortUrl profile could not be created. Contact admin.');
             if (u.is_blocked) throw new Error('This account is blocked. Contact admin.');
             currentUserData = u;
             document.getElementById('ui-loading').classList.add('hidden');
@@ -487,7 +517,8 @@
                     if (result.error) throw result.error;
                     authData = result.data;
                     if (!authData.session) {
-                        throw new Error('Registration successful. Please confirm your email, then log in.');
+                        alert('Registration successful! Please check your email (including Spam) and click the verification link. After verification, return here and log in.');
+                        return;
                     }
                     const tgUser = tg.initDataUnsafe?.user || {};
                     const { data: existing } = await dbClient.from('users').select('id')
