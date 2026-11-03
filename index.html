@@ -648,13 +648,11 @@
                 .filter(row => row.source === 'link_earning')
                 .reduce((sum, row) => sum + Number(row.amount || 0), 0);
             const referralEarnings = (referralResult.data || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
-            let views = 0;
-            if (linkIds.length) {
-                const { count, error } = await dbClient.from('click_logs').select('id', { count: 'exact', head: true })
-                    .in('link_id', linkIds).gte('created_at', start).lt('created_at', end);
-                if (error) throw error;
-                views = count || 0;
-            }
+            // Count only successfully rewarded link views. Each successful reward
+            // creates one link_earning ledger row; click_logs also includes attempts
+            // that may not have earned, so it is not a valid Average CPM denominator.
+            const linkEarningRows = logs.filter(row => row.source === 'link_earning');
+            const views = linkEarningRows.length;
             return { earnings, referralEarnings, views, cpm: views > 0 ? (earnings / views) * 1000 : 0 };
         }
 
