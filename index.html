@@ -880,13 +880,30 @@
             if (!rows.length) {
                 list.innerHTML = '<div class="glass-panel p-5 text-center text-slate-400">You have not referred anyone yet.</div>';
             } else {
-                const ids = rows.map(r => r.referred_tg_id);
-                const { data: referredUsers } = await dbClient.from('users').select('telegram_id,first_name,username').in('telegram_id', ids);
-                const userMap = new Map((referredUsers || []).map(u => [String(u.telegram_id), u]));
+                let nameRows = [];
+                try {
+                    const response = await fetch(`${VERCEL_API_URL}/referral_names`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ init_data: tg.initData })
+                    });
+                    const result = await response.json();
+                    if (response.ok && result.success && Array.isArray(result.referrals)) {
+                        nameRows = result.referrals;
+                    } else {
+                        console.warn('Referral names API:', result.error || 'Unable to load names');
+                    }
+                } catch (error) {
+                    console.warn('Referral names request failed:', error);
+                }
+                const nameMap = new Map(nameRows.map(u => [String(u.referred_tg_id), u]));
+                const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({
+                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+                }[ch]));
                 list.innerHTML = rows.map(r => {
-                    const u = userMap.get(String(r.referred_tg_id)) || {};
-                    const label = u.first_name || u.username || `User ${r.referred_tg_id}`;
-                    return `<div class="glass-panel p-4 flex justify-between items-center"><div><div class="font-semibold text-white">${label}</div><div class="text-xs text-slate-500">${new Date(r.created_at).toLocaleDateString()}</div></div><div class="text-xs text-emerald-400 font-bold">Joined</div></div>`;
+                    const u = nameMap.get(String(r.referred_tg_id)) || {};
+                    const label = u.first_name || (u.username ? `@${u.username}` : `User ${r.referred_tg_id}`);
+                    return `<div class="glass-panel p-4 flex justify-between items-center"><div><div class="font-semibold text-white">${escapeHtml(label)}</div><div class="text-xs text-slate-500">${new Date(r.created_at).toLocaleDateString()}</div></div><div class="text-xs text-emerald-400 font-bold">Joined</div></div>`;
                 }).join('');
             }
             document.getElementById('btn-copy-referral').onclick = async () => {
@@ -962,7 +979,6 @@
 
         async function handleAdSuccess(providers) {
             const btn = document.getElementById('btn-watch-ad');
-            let unlockedOriginalUrl = '';
             try {
                 const res = await fetch(`${VERCEL_API_URL}/reward`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -970,8 +986,6 @@
                 });
                 const result = await res.json();
                 if (!res.ok || !result.success) throw new Error(result.error || 'Fraud check failed.');
-                unlockedOriginalUrl = result.original_url || '';
-                if (!unlockedOriginalUrl) throw new Error('The secure link was not returned. Please try again.');
             } catch (e) {
                 document.getElementById('ad-waiting-indicator').classList.add('hidden');
                 const warning = document.getElementById('self-click-warning');
@@ -994,13 +1008,8 @@
             const getLinkBtn = document.getElementById('btn-get-link');
             getLinkBtn.classList.remove('hidden');
             
-            getLinkBtn.onclick = () => {
-                if (window.Telegram?.WebApp?.openLink) {
-                    window.Telegram.WebApp.openLink(unlockedOriginalUrl);
-                } else {
-                    window.open(unlockedOriginalUrl, '_blank', 'noopener');
-                }
-            };
+            const { data } = await dbClient.from('links').select('original_url').eq('short_id', window.currentShortId).single();
+            if (data?.original_url) getLinkBtn.onclick = () => tg.openLink(data.original_url);
         }
 
         window.onload = initApp;
