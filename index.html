@@ -882,6 +882,11 @@
             } else {
                 let nameRows = [];
                 try {
+                    alert(
+  "Telegram ID: " + (tg.initDataUnsafe?.user?.id || "Missing") +
+  "\nProfile ID: " + currentUserData.telegram_id +
+  "\nExpected Referrer ID: 1793417638198"
+);
                     const response = await fetch(`${VERCEL_API_URL}/referral_names`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
