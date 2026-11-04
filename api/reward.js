@@ -195,7 +195,7 @@ export default async function handler(req, res) {
       }
     }
 
-        return res.status(200).json({ success: true, earned: grantReward });
+        return res.status(200).json({ success: true, earned: grantReward, original_url: link.original_url });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
