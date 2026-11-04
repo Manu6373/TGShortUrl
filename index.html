@@ -443,6 +443,11 @@
                 }
 
                 const startParam = tg.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get('link');
+                // Keep Telegram referral start parameters while the user verifies email
+                // and returns to log in later.
+                if (startParam && /^ref_\d+$/.test(startParam)) {
+                    localStorage.setItem('tgshorturl_pending_referral', startParam);
+                }
                 if (startParam && startParam.startsWith('link_')) {
                     window.currentShortId = startParam.replace('link_', '');
                     document.getElementById('ui-main-app').classList.add('hidden');
@@ -457,6 +462,12 @@
                 if (error) throw error;
                 if (session) {
                     await loadAuthenticatedProfile(session);
+                    try {
+                        await processPendingReferral();
+                    } catch (referralError) {
+                        console.error('Referral processing error:', referralError);
+                        alert(referralError?.message || 'Your account is ready, but the referral could not be added. Please contact admin.');
+                    }
                 } else {
                     document.getElementById('ui-loading').classList.add('hidden');
                     document.getElementById('ui-auth').classList.remove('hidden');
@@ -467,6 +478,56 @@
                 document.getElementById('ui-auth').classList.remove('hidden');
                 alert('Login/session error: ' + (error?.message || 'Unknown error'));
             }
+        }
+
+        // Process a Telegram referral after the user has a verified login session
+        // and a TGShortUrl profile. Existing referral rows are left untouched.
+        async function processPendingReferral() {
+            const pending = localStorage.getItem('tgshorturl_pending_referral') || '';
+            if (!/^ref_\d+$/.test(pending) || !currentUserData?.telegram_id) return;
+
+            const referrerId = Number(pending.slice(4));
+            const referredId = Number(currentUserData.telegram_id);
+            if (!Number.isSafeInteger(referrerId) || !Number.isSafeInteger(referredId) || referrerId <= 0 || referredId <= 0) return;
+            if (referrerId === referredId) {
+                localStorage.removeItem('tgshorturl_pending_referral');
+                return;
+            }
+
+            const { data: existing, error: lookupError } = await dbClient
+                .from('referrals')
+                .select('referred_tg_id')
+                .eq('referred_tg_id', referredId)
+                .maybeSingle();
+            if (lookupError) throw new Error('Could not check referral status: ' + lookupError.message);
+
+            if (existing) {
+                localStorage.removeItem('tgshorturl_pending_referral');
+                return;
+            }
+
+            const { error: insertError } = await dbClient.from('referrals').insert([{
+                referrer_tg_id: referrerId,
+                referred_tg_id: referredId
+            }]);
+            if (insertError) {
+                // Another login/device may have inserted the same referral concurrently.
+                if (insertError.code === '23505') {
+                    localStorage.removeItem('tgshorturl_pending_referral');
+                    return;
+                }
+                throw new Error('Could not add referral: ' + insertError.message);
+            }
+
+            // Keep the existing backend referral-processing/notification workflow.
+            const tgUser = tg.initDataUnsafe?.user || {};
+            fetch(`${VERCEL_API_URL}/process_referral`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ referrer_id: referrerId, new_user: { ...tgUser, id: referredId } })
+            }).catch(err => console.warn('Referral processing notification failed:', err));
+
+            localStorage.removeItem('tgshorturl_pending_referral');
         }
 
         // AUTH & NAVIGATION
@@ -533,18 +594,6 @@
                         }]);
                         if (insertError) throw new Error('Account created but profile creation failed: ' + insertError.message);
                     }
-                    const startParam = tg.initDataUnsafe?.start_param;
-                    if (startParam && startParam.startsWith('ref_') && tgUser.id) {
-                        const referrerId = parseInt(startParam.replace('ref_', ''), 10);
-                        if (Number.isFinite(referrerId)) {
-                            await dbClient.from('referrals').insert([{ referrer_tg_id: referrerId, referred_tg_id: tgUser.id }]);
-                            fetch(`${VERCEL_API_URL}/process_referral`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ referrer_id: referrerId, new_user: tgUser })
-                            }).catch(err => console.warn('Referral notification failed:', err));
-                        }
-                    }
                 }
 
                 // Do not reload the Telegram WebView after login. Render the profile
@@ -552,6 +601,12 @@
                 const { data: sessionData, error: sessionError } = await dbClient.auth.getSession();
                 if (sessionError) throw sessionError;
                 await loadAuthenticatedProfile(sessionData.session || authData.session);
+                try {
+                    await processPendingReferral();
+                } catch (referralError) {
+                    console.error('Referral processing error:', referralError);
+                    alert(referralError?.message || 'Your account is ready, but the referral could not be added. Please contact admin.');
+                }
             } catch (error) {
                 console.error('TGShortUrl authentication error:', error);
                 alert(error?.message || 'Login failed. Please try again.');
