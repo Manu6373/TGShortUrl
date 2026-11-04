@@ -882,18 +882,26 @@
             } else {
                 let nameRows = [];
                 try {
-                    alert(
-  "Telegram ID: " + (tg.initDataUnsafe?.user?.id || "Missing") +
-  "\nProfile ID: " + currentUserData.telegram_id +
-  "\nExpected Referrer ID: 1793417638198"
-);
+                    const { data: sessionData, error: sessionError } =
+                        await dbClient.auth.getSession();
+
+                    if (sessionError) throw sessionError;
+
+                    const accessToken = sessionData?.session?.access_token;
+                    if (!accessToken) {
+                        throw new Error('Please log in again to load referral names.');
+                    }
+
                     const response = await fetch(`${VERCEL_API_URL}/referral_names`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ init_data: tg.initData })
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${accessToken}`
+                        },
+                        body: JSON.stringify({})
                     });
+
                     const result = await response.json();
-                    alert("REFERRAL API RESPONSE:\n" + JSON.stringify(result, null, 2));
                     if (response.ok && result.success && Array.isArray(result.referrals)) {
                         nameRows = result.referrals;
                     } else {
