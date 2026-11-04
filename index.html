@@ -888,6 +888,7 @@
                         body: JSON.stringify({ init_data: tg.initData })
                     });
                     const result = await response.json();
+                    console.log("REFERRAL API RESPONSE:", result);
                     if (response.ok && result.success && Array.isArray(result.referrals)) {
                         nameRows = result.referrals;
                     } else {
