@@ -962,6 +962,7 @@
 
         async function handleAdSuccess(providers) {
             const btn = document.getElementById('btn-watch-ad');
+            let unlockedOriginalUrl = '';
             try {
                 const res = await fetch(`${VERCEL_API_URL}/reward`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -969,6 +970,8 @@
                 });
                 const result = await res.json();
                 if (!res.ok || !result.success) throw new Error(result.error || 'Fraud check failed.');
+                unlockedOriginalUrl = result.original_url || '';
+                if (!unlockedOriginalUrl) throw new Error('The secure link was not returned. Please try again.');
             } catch (e) {
                 document.getElementById('ad-waiting-indicator').classList.add('hidden');
                 const warning = document.getElementById('self-click-warning');
@@ -991,8 +994,13 @@
             const getLinkBtn = document.getElementById('btn-get-link');
             getLinkBtn.classList.remove('hidden');
             
-            const { data } = await dbClient.from('links').select('original_url').eq('short_id', window.currentShortId).single();
-            if (data?.original_url) getLinkBtn.onclick = () => tg.openLink(data.original_url);
+            getLinkBtn.onclick = () => {
+                if (window.Telegram?.WebApp?.openLink) {
+                    window.Telegram.WebApp.openLink(unlockedOriginalUrl);
+                } else {
+                    window.open(unlockedOriginalUrl, '_blank', 'noopener');
+                }
+            };
         }
 
         window.onload = initApp;
