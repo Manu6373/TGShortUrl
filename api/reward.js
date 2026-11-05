@@ -106,7 +106,7 @@ export default async function handler(req, res) {
     const { data: claimRow, error: claimError } = await db.from('reward_claims').insert({ short_id, clicker_tg_id: telegramUser.id, ip_address: clientIp, reward_date: rewardDate }).select('id').single();
     await db.from('click_logs').insert({ link_id: link.id, clicker_tg_id: telegramUser.id });
     if (claimError) {
-      if (claimError.code === '23505') return res.status(200).json({ success: true, earned: false, duplicate: true, message: 'Already used this link today.' });
+      if (claimError.code === '23505') return res.status(200).json({ success: true, earned: false, duplicate: true, message: 'Already used this link today.', original_url: link.original_url });
       return res.status(500).json({ error: 'Could not register attempt.' });
     }
 
