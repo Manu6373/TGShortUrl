@@ -993,6 +993,7 @@
 
         async function handleAdSuccess(providers) {
             const btn = document.getElementById('btn-watch-ad');
+            let rewardResult = null;
             try {
                 const res = await fetch(`${VERCEL_API_URL}/reward`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1000,6 +1001,7 @@
                 });
                 const result = await res.json();
                 if (!res.ok || !result.success) throw new Error(result.error || 'Fraud check failed.');
+                rewardResult = result;
             } catch (e) {
                 document.getElementById('ad-waiting-indicator').classList.add('hidden');
                 const warning = document.getElementById('self-click-warning');
@@ -1021,9 +1023,18 @@
             document.getElementById('ad-step-title').innerText = 'Link Unlocked!';
             const getLinkBtn = document.getElementById('btn-get-link');
             getLinkBtn.classList.remove('hidden');
-            
-            const { data } = await dbClient.from('links').select('original_url').eq('short_id', window.currentShortId).single();
-            if (data?.original_url) getLinkBtn.onclick = () => tg.openLink(data.original_url);
+
+            // Use the URL returned by the reward API. Browser-side RLS prevents
+            // users from reading another user's original_url directly.
+            const originalUrl = rewardResult?.original_url;
+            if (originalUrl) {
+                getLinkBtn.onclick = () => {
+                    if (tg?.openLink) tg.openLink(originalUrl);
+                    else window.open(originalUrl, '_blank', 'noopener');
+                };
+            } else {
+                getLinkBtn.onclick = () => alert('Could not load the original link. Please contact support.');
+            }
         }
 
         window.onload = initApp;
