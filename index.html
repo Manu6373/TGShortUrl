@@ -284,17 +284,30 @@
                     </div>`;
         }
 
-        // Script injector
-        function injectHTMLWithScripts(htmlString) {
+        // Load provider scripts in source order. External SDKs must finish loading
+        // before their following inline initialization scripts are executed.
+        async function injectHTMLWithScripts(htmlString) {
             if (!htmlString) return;
             const holder = document.createElement('div');
             holder.innerHTML = htmlString;
-            Array.from(holder.querySelectorAll('script')).forEach(oldScript => {
+
+            for (const oldScript of Array.from(holder.querySelectorAll('script'))) {
                 const script = document.createElement('script');
                 Array.from(oldScript.attributes).forEach(attr => script.setAttribute(attr.name, attr.value));
-                script.textContent = oldScript.textContent;
-                document.body.appendChild(script);
-            });
+
+                if (oldScript.src) {
+                    script.async = false;
+                    await new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => reject(new Error(`Provider SDK load timed out: ${oldScript.src}`)), 20000);
+                        script.onload = () => { clearTimeout(timeout); resolve(); };
+                        script.onerror = () => { clearTimeout(timeout); reject(new Error(`Could not load provider SDK: ${oldScript.src}`)); };
+                        document.body.appendChild(script);
+                    });
+                } else {
+                    script.textContent = oldScript.textContent;
+                    document.body.appendChild(script);
+                }
+            }
         }
 
         function getDynamicRewardProviders() {
@@ -309,17 +322,25 @@
             const valid = raw.split(',').map(x => x.trim()).filter(x => ['monetag', 'adsbitvex'].includes(x));
             return [...new Set(valid.length ? valid : ['monetag'])];
         }
-        function resolveWindowFunction(path) {
-            return String(path || '').replace(/^window\./, '').split('.').reduce((obj, key) => obj && obj[key], window);
+        function resolveWindowMethod(path) {
+            const parts = String(path || '').trim().replace(/^window\./, '').split('.').filter(Boolean);
+            if (!parts.length) return null;
+            let owner = window;
+            for (const key of parts.slice(0, -1)) {
+                owner = owner && owner[key];
+                if (!owner) return null;
+            }
+            const fn = owner && owner[parts[parts.length - 1]];
+            return typeof fn === 'function' ? { owner, fn } : null;
         }
-        async function waitForProviderFunction(functionName, providerName, timeoutMs = 10000) {
+        async function waitForProviderFunction(functionName, providerName, timeoutMs = 15000) {
             const started = Date.now();
             while (Date.now() - started < timeoutMs) {
-                const fn = resolveWindowFunction(functionName);
-                if (typeof fn === 'function') return fn;
+                const method = resolveWindowMethod(functionName);
+                if (method) return method;
                 await new Promise(resolve => setTimeout(resolve, 250));
             }
-            throw new Error(`${providerName} SDK did not become ready.`);
+            throw new Error(`${providerName} SDK did not become ready. Check its SDK script and Function Name in Admin Panel.`);
         }
         async function runRewardProvider(provider) {
             const isDynamic = provider && typeof provider === 'object';
@@ -327,11 +348,11 @@
             const functionName = isDynamic
                 ? provider.function_name
                 : (provider === 'monetag' ? (adminSettings.monetag_reward_func || 'show_12122788') : (adminSettings.adsbitvex_reward_func || 'window.showadsbitvex'));
-            const fn = await waitForProviderFunction(functionName, providerName);
+            const method = await waitForProviderFunction(functionName, providerName);
             // Provider SDK must resolve its Promise only after the rewarded ad completes.
             // A client-side Promise is not independent server-side proof of an impression.
             const result = await Promise.race([
-                Promise.resolve().then(() => fn()),
+                Promise.resolve().then(() => method.fn.call(method.owner)),
                 new Promise((_, reject) => setTimeout(() => reject(new Error(`${providerName} ad timed out.`)), 45000))
             ]);
             if (result === false || result?.success === false || ['failed', 'no_fill', 'cancelled', 'canceled'].includes(String(result?.status || '').toLowerCase())) {
@@ -365,15 +386,15 @@
                 
                 const providers = getConfiguredRewardProviders();
                 if (providers.length && typeof providers[0] === 'object') {
-                    providers.forEach(provider => injectHTMLWithScripts(provider.script || ''));
+                    for (const provider of providers) await injectHTMLWithScripts(provider.script || '');
                 } else {
                     if (providers.includes('monetag')) {
                         const code = adminSettings.monetag_reward_script || "<script src='//libtl.com/sdk.js' data-zone='12122788' data-sdk='show_12122788'><\/script>";
-                        injectHTMLWithScripts(code);
+                        await injectHTMLWithScripts(code);
                     }
                     if (providers.includes('adsbitvex')) {
                         const code = adminSettings.adsbitvex_reward_script || '<script src="https://sdk.adsbitvex.com/functions/v1/ad-script?appid=000540"><\/script>';
-                        injectHTMLWithScripts(code);
+                        await injectHTMLWithScripts(code);
                     }
                 }
                 loadBannerAd();
