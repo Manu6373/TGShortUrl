@@ -98,7 +98,13 @@ export default async function handler(req, res) {
     if (ownerError || !owner) return res.status(404).json({ error: 'Link owner not found.' });
 
     if (String(owner.telegram_id) === telegramUser.id) {
-      return res.status(403).json({ error: 'Self-clicks are not eligible for rewards.' });
+      return res.status(200).json({
+        success: true,
+        self_click: true,
+        earned: false,
+        message: 'Self-link detected! No reward will be counted.',
+        original_url: link.original_url
+      });
     }
 
     const now = new Date();
