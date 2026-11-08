@@ -230,8 +230,8 @@
     </div>
 
     <!-- ADVANCED AD VIEWING UI (MONETAG ONLY) -->
-    <div id="ui-ad-viewer" class="hidden fixed inset-0 min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-6 z-[100]">
-        <div class="glass-panel w-full max-w-sm p-8 text-center shadow-2xl relative flex flex-col">
+    <div id="ui-ad-viewer" class="hidden fixed inset-0 w-screen h-[100dvh] min-h-screen overflow-y-auto bg-[#0f172a] flex flex-col items-center justify-center p-6 z-[100]">
+        <div class="glass-panel w-full max-w-sm p-8 text-center shadow-2xl relative flex flex-col my-auto">
             <h2 class="text-2xl font-bold mb-4 text-white" id="ad-step-title">Please Wait...</h2>
             <div id="link-info-container" class="mb-6 text-sm text-slate-300">
                 <i class="fa-solid fa-link text-indigo-400 mr-2"></i><span id="ad-link-desc">Unlocking Secure Link...</span>
@@ -609,7 +609,14 @@
                 }
             } catch (error) {
                 console.error('TGShortUrl authentication error:', error);
-                alert(error?.message || 'Login failed. Please try again.');
+                const authMessage = String(error?.message || '').toLowerCase();
+                if (isLoginMode && (error?.code === 'invalid_credentials' || authMessage.includes('invalid login credentials'))) {
+                    alert('Invalid email or password. Please check and try again.');
+                } else if (isLoginMode && (error?.code === 'email_address_invalid' || authMessage.includes('email address is invalid'))) {
+                    alert('Invalid email. Please check your email address.');
+                } else {
+                    alert(error?.message || (isLoginMode ? 'Login failed. Please try again.' : 'Registration failed. Please try again.'));
+                }
             } finally {
                 button.disabled = false;
                 button.innerText = isLoginMode ? 'Login' : 'Register';
@@ -965,7 +972,6 @@
             const failedProviders = [];
 
             for (const provider of providers) {
-                if (completedProviders.length >= minimumAds) break;
                 const providerName = typeof provider === 'object' ? (provider.name || provider.id) : provider;
                 btn.innerHTML = 'Loading ad...';
                 try {
@@ -983,7 +989,7 @@
                 btn.disabled = false;
                 btn.innerHTML = 'Try Again';
                 const remaining = minimumAds - completedProviders.length;
-                alert('Ads Not Available. Something Went Wrong. Please try again later!');
+                alert('No ads available. Something went wrong. Please try again later!');
                 return;
             }
 
@@ -1002,6 +1008,11 @@
                 const result = await res.json();
                 if (!res.ok || !result.success) throw new Error(result.error || 'Fraud check failed.');
                 rewardResult = result;
+                if (result.self_click) {
+                    const warning = document.getElementById('self-click-warning');
+                    warning.textContent = 'Self-link detected! No reward will be counted.';
+                    warning.classList.remove('hidden');
+                }
             } catch (e) {
                 document.getElementById('ad-waiting-indicator').classList.add('hidden');
                 const warning = document.getElementById('self-click-warning');
@@ -1020,7 +1031,7 @@
             btn.classList.add('hidden');
             document.getElementById('ad-waiting-indicator').classList.add('hidden');
             document.getElementById('ad-timer-container').classList.add('hidden');
-            document.getElementById('ad-step-title').innerText = 'Link Unlocked!';
+            document.getElementById('ad-step-title').innerText = rewardResult?.self_click ? 'Self-link detected' : 'Link Unlocked!';
             const getLinkBtn = document.getElementById('btn-get-link');
             getLinkBtn.classList.remove('hidden');
 
