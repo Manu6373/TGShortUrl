@@ -181,6 +181,12 @@
                     <input type="password" id="auth-password" required minlength="6" class="w-full bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-xl focus:border-indigo-500 outline-none pr-10">
                     <button type="button" onclick="togglePassword()" class="absolute right-3 top-8 text-slate-400 hover:text-white"><i id="eye-icon" class="fa-solid fa-eye"></i></button>
                 </div>
+                <div id="registration-consent" class="hidden rounded-xl border border-slate-700 bg-slate-900/60 p-3">
+                    <label class="flex items-start gap-2 text-xs leading-5 text-slate-300">
+                        <input type="checkbox" id="legal-consent" required class="mt-1 accent-indigo-500">
+                        <span>I agree to the <button type="button" onclick="openLegal('terms')" class="text-indigo-400 underline">Terms of Use</button> and acknowledge the <button type="button" onclick="openLegal('privacy')" class="text-indigo-400 underline">Privacy Policy</button>.</span>
+                    </label>
+                </div>
                 <div id="forgot-password-row" class="text-right -mt-2">
                     <button type="button" onclick="forgotPassword()" class="text-xs text-indigo-400 font-semibold hover:underline">Forgot Password?</button>
                 </div>
@@ -321,6 +327,12 @@
                     <p id="profile-id" class="text-xs text-indigo-300 font-mono mt-2">ID: ...</p>
                 </div>
                 <div class="glass-panel p-6 mb-6">
+                    <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Legal &amp; Policy</h3>
+                    <button type="button" onclick="openLegal('privacy')" class="w-full flex items-center justify-between py-3 text-white border-b border-slate-700/70"><span class="flex items-center gap-3"><i class="fa-solid fa-shield-halved text-indigo-400"></i><span class="font-semibold text-sm">Privacy Policy</span></span><i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i></button>
+                    <button type="button" onclick="openLegal('terms')" class="w-full flex items-center justify-between py-3 text-white border-b border-slate-700/70"><span class="flex items-center gap-3"><i class="fa-solid fa-file-contract text-indigo-400"></i><span class="font-semibold text-sm">Terms of Use</span></span><i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i></button>
+                    <button type="button" onclick="openLegal('dmca')" class="w-full flex items-center justify-between py-3 text-white"><span class="flex items-center gap-3"><i class="fa-solid fa-copyright text-indigo-400"></i><span class="font-semibold text-sm">DMCA</span></span><i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i></button>
+                </div>
+                <div class="glass-panel p-6 mb-6">
                     <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Social Links</h3>
                     <a href="https://t.me/TGShortUrl" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between py-4 text-white border-b border-slate-700/70">
                         <span class="flex items-center gap-3"><i class="fa-brands fa-telegram text-sky-400 text-2xl"></i><span class="font-semibold">Official Channel</span></span>
@@ -341,6 +353,17 @@
                 <button class="nav-btn nav-item flex flex-col items-center w-1/5" data-target="page-profile"><div class="nav-icon w-10 h-10 rounded-xl flex items-center justify-center text-lg mb-1"><i class="fa-solid fa-user"></i></div><span class="text-[10px] font-medium tracking-wide">Profile</span></button>
             </div>
         </nav>
+    </div>
+
+    <!-- LEGAL PAGES -->
+    <div id="ui-legal" class="hidden fixed inset-0 z-[80] bg-[#0f172a] overflow-y-auto">
+        <div class="max-w-3xl mx-auto p-4 pb-10">
+            <div class="glass-panel p-4 mb-4 flex items-center gap-3 sticky top-0 z-10">
+                <button type="button" onclick="closeLegal()" class="w-10 h-10 rounded-xl bg-slate-800 text-white"><i class="fa-solid fa-arrow-left"></i></button>
+                <h2 id="legal-title" class="text-lg font-bold text-white">Legal &amp; Policy</h2>
+            </div>
+            <article id="legal-content" class="glass-panel p-5 text-sm leading-6 text-slate-300 space-y-4"></article>
+        </div>
     </div>
 
     <!-- ADVANCED AD VIEWING UI (MONETAG ONLY) -->
@@ -693,6 +716,10 @@
             isLoginMode = !isLoginMode;
             document.getElementById('auth-title').innerText = isLoginMode ? "Welcome Back" : "Create Account";
             document.getElementById('btn-auth').innerText = isLoginMode ? "Login" : "Register";
+            document.getElementById('registration-consent').classList.toggle('hidden', isLoginMode);
+            document.getElementById('legal-consent').required = !isLoginMode;
+            document.getElementById('legal-consent').checked = false;
+            document.getElementById('forgot-password-row').classList.toggle('hidden', !isLoginMode);
         }
         function togglePassword() {
             const input = document.getElementById('auth-password'); const icon = document.getElementById('eye-icon');
@@ -723,6 +750,10 @@
             const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
             const button = document.getElementById('btn-auth');
+            if (!isLoginMode && !document.getElementById('legal-consent').checked) {
+                alert('Please agree to the Terms of Use and acknowledge the Privacy Policy to register.');
+                return;
+            }
             button.disabled = true;
             button.innerText = isLoginMode ? 'Logging in...' : 'Creating account...';
             try {
@@ -732,7 +763,7 @@
                     if (result.error) throw result.error;
                     authData = result.data;
                 } else {
-                    const result = await dbClient.auth.signUp({ email, password });
+                    const result = await dbClient.auth.signUp({ email, password, options: { data: { legal_consent: true, legal_consent_at: new Date().toISOString(), legal_consent_version: '2026-11-09' } } });
                     if (result.error) throw result.error;
                     authData = result.data;
                     if (!authData.session) {
@@ -780,6 +811,59 @@
                 button.innerText = isLoginMode ? 'Login' : 'Register';
             }
         }
+        const LEGAL_EMAIL = 'tgshorturlofficial@gmail.com';
+        const legalPages = {
+            privacy: { title: 'Privacy Policy', html: `
+                <p><strong class="text-white">Last updated: 9 November 2026</strong></p>
+                <p>TGShortUrl respects your privacy. This policy explains the personal information that may be processed when you use our Telegram Mini App and URL-shortening service.</p>
+                <h3 class="text-white font-bold">1. Information we handle</h3>
+                <p>Depending on the features you use, this may include your email address, Telegram user ID, Telegram name or username, account/profile details, links you submit and shortened-link records, referral records, reward/earning activity, wallet balance, withdrawal method and payment details you submit, and withdrawal history.</p>
+                <p>Our hosting, database, Telegram and advertising providers may also process technical information such as device/browser details, network information or usage data as part of providing their services. We do not claim to collect a separate IP or device profile directly unless it is made available through those services.</p>
+                <h3 class="text-white font-bold">2. How we use information</h3>
+                <p>We use information to create and manage accounts, provide link-shortening features, calculate rewards and referrals, maintain wallet and withdrawal records, prevent abuse or fraud, provide support, and operate and secure the service.</p>
+                <h3 class="text-white font-bold">3. Service providers and sharing</h3>
+                <p>Information may be processed by service providers used to operate TGShortUrl, including our database/hosting providers, Telegram and the advertising providers enabled in the app. Payment details may be used to process a withdrawal through the selected payment method. We do not sell personal information.</p>
+                <h3 class="text-white font-bold">4. Storage and security</h3>
+                <p>Information is retained for as long as reasonably needed to operate your account, maintain financial/reward records, resolve disputes, prevent abuse and meet applicable legal requirements. We use reasonable safeguards, but no online service can guarantee absolute security.</p>
+                <h3 class="text-white font-bold">5. Your choices and requests</h3>
+                <p>You may contact us to request access to, correction of, or deletion of personal information, or to withdraw consent where consent is the basis for processing. Some records may need to be retained for security, accounting, dispute-resolution or legal purposes. We may need to verify your identity before acting on a request.</p>
+                <h3 class="text-white font-bold">6. Children</h3>
+                <p>If you are under 18, please use TGShortUrl only with the permission and involvement of a parent or lawful guardian. A parent or guardian may contact us about a child’s information.</p>
+                <h3 class="text-white font-bold">7. Changes and contact</h3>
+                <p>We may update this policy when our service or legal requirements change. For privacy questions or requests, contact <a class="text-indigo-400 underline" href="mailto:${LEGAL_EMAIL}">${LEGAL_EMAIL}</a>.</p>` },
+            terms: { title: 'Terms of Use', html: `
+                <p><strong class="text-white">Last updated: 9 November 2026</strong></p>
+                <p>By creating an account or using TGShortUrl, you agree to these Terms of Use. If you do not agree, do not use the service.</p>
+                <h3 class="text-white font-bold">1. Use of the service</h3>
+                <p>Provide accurate account information and keep your login credentials secure. You must not use TGShortUrl for illegal activity, phishing, scams, malware, spam, copyright infringement or any harmful or abusive purpose.</p>
+                <h3 class="text-white font-bold">2. Link shortening</h3>
+                <p>You are responsible for the URLs you submit and for ensuring that you have the right to share them. We may restrict or remove shortened links that violate these terms or create security, legal or abuse risks.</p>
+                <h3 class="text-white font-bold">3. Ads, rewards and referrals</h3>
+                <p>Rewards are subject to successful completion and verification of the required ad or referral activity. Automated, fraudulent, manipulated or self-generated activity may be rejected. Reward rates, availability and program rules may change.</p>
+                <h3 class="text-white font-bold">4. Wallet and withdrawals</h3>
+                <p>Wallet balances and earnings are calculated using the app’s records and applicable program settings. Withdrawals are subject to the displayed minimum, available payment methods, verification and processing schedule. Incorrect payment details may delay or prevent payment.</p>
+                <h3 class="text-white font-bold">5. Intellectual property</h3>
+                <p>TGShortUrl’s name, branding, interface and service materials are protected by applicable intellectual-property laws. You may not copy or misuse them without permission.</p>
+                <h3 class="text-white font-bold">6. Third-party services</h3>
+                <p>The app may rely on Telegram, hosting, database, advertising and payment providers. Their services are governed by their own terms and policies. We are not responsible for third-party websites or content linked by users.</p>
+                <h3 class="text-white font-bold">7. Suspension and availability</h3>
+                <p>We may suspend or terminate access for suspected abuse, violations of these terms, security reasons or legal requirements. The service may be changed, interrupted or discontinued. To the extent permitted by law, TGShortUrl is provided without a guarantee of uninterrupted availability.</p>
+                <h3 class="text-white font-bold">8. Changes and contact</h3>
+                <p>We may update these terms from time to time. Continued use after an update means you accept the revised terms. Questions: <a class="text-indigo-400 underline" href="mailto:${LEGAL_EMAIL}">${LEGAL_EMAIL}</a>.</p>` },
+            dmca: { title: 'DMCA', html: `
+                <p>TGShortUrl provides URL-shortening services and does not host external website content. To report copyright violations, phishing, scams or abusive links, please contact us at our support email.</p>
+                <p>We may review and remove reported shortened links from our platform.</p>
+                <p>Contact: <a class="text-indigo-400 underline" href="mailto:${LEGAL_EMAIL}">${LEGAL_EMAIL}</a></p>
+                <p>Thank you for helping us keep TGShortUrl safe.</p>` }
+        };
+        function openLegal(type) {
+            const page = legalPages[type]; if (!page) return;
+            document.getElementById('legal-title').textContent = page.title;
+            document.getElementById('legal-content').innerHTML = page.html;
+            document.getElementById('ui-legal').classList.remove('hidden');
+        }
+        function closeLegal() { document.getElementById('ui-legal').classList.add('hidden'); }
+
         async function handleLogout() { await dbClient.auth.signOut(); location.reload(); }
 
         function switchPage(pageId) {
