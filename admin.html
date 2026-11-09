@@ -7,7 +7,201 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>body { background-color: #0f172a; color: #f8fafc; } .glass-panel { background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 1rem; }</style>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+        :root {
+            color-scheme: dark;
+            --page: #0b0d14;
+            --sidebar: #0f1118;
+            --surface: #11141c;
+            --raised: #1a1e28;
+            --line: rgba(238, 240, 245, 0.09);
+            --text: #eef0f5;
+            --secondary: #a3a9b8;
+            --muted: #8d95a8;
+            --accent: #55a7e8;
+            --positive: #4cc38a;
+        }
+        body {
+            min-height: 100vh;
+            background: var(--page);
+            color: var(--text);
+            font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+        }
+        .glass-panel {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            box-shadow: none;
+        }
+        #login-screen { background: var(--page); padding: 20px; }
+        #login-screen > div {
+            width: min(100%, 400px);
+            padding: 32px;
+            text-align: left;
+            border-radius: 14px;
+        }
+        #login-screen h2 { margin-bottom: 24px; font-size: 24px; font-weight: 500; }
+        #login-screen input {
+            width: 100%;
+            min-height: 44px;
+            margin-bottom: 12px;
+            padding: 10px 12px;
+            color: var(--text);
+            background: var(--raised);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+        }
+        #admin-dashboard { min-height: 100vh; }
+        #admin-dashboard aside {
+            position: sticky;
+            top: 0;
+            flex: 0 0 256px;
+            width: 256px;
+            height: 100vh;
+            padding: 24px 16px;
+            background: var(--sidebar);
+            border-color: var(--line);
+        }
+        #admin-dashboard aside h1 {
+            margin-bottom: 28px;
+            color: var(--text);
+            font-size: 17px;
+            font-weight: 500;
+        }
+        #admin-dashboard aside nav { display: flex; flex-direction: column; gap: 4px; }
+        #admin-dashboard aside nav > :not([hidden]) ~ :not([hidden]) { margin-top: 0; }
+        #admin-dashboard aside nav button,
+        #admin-dashboard aside > button {
+            min-height: 38px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            color: var(--secondary);
+            text-align: left;
+            transition: color 150ms ease, background-color 150ms ease;
+        }
+        #admin-dashboard aside nav button.bg-indigo-600 {
+            color: var(--text);
+            background: var(--raised);
+            box-shadow: inset 2px 0 var(--accent);
+        }
+        #admin-dashboard aside nav button:hover,
+        #admin-dashboard aside > button:hover { background: var(--raised); }
+        #admin-dashboard aside > button { color: #e0797d; }
+        #main-content {
+            width: 100%;
+            max-width: 1600px;
+            min-width: 0;
+            margin: 0 auto;
+            padding: 32px;
+            background: var(--page);
+        }
+        #main-content h2 { color: var(--text); font-weight: 500; letter-spacing: 0; }
+        #main-content .glass-panel { padding: 20px; }
+        #main-content .grid.grid-cols-4 {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+        }
+        #main-content .grid.grid-cols-4 .glass-panel { min-width: 0; }
+        #main-content .grid.grid-cols-4 .text-3xl,
+        #main-content .grid.grid-cols-4 .text-2xl { font-variant-numeric: tabular-nums; font-weight: 500; }
+        #main-content input,
+        #main-content textarea,
+        #main-content select {
+            min-height: 40px;
+            padding: 8px 10px;
+            color: var(--text);
+            background-color: var(--raised);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            box-shadow: none;
+        }
+        #main-content textarea { min-height: 88px; }
+        #main-content input:focus,
+        #main-content textarea:focus,
+        #main-content select:focus,
+        #login-screen input:focus {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        #main-content table { border-collapse: collapse; }
+        #main-content thead { background: var(--raised); }
+        #main-content th {
+            padding: 12px 14px;
+            color: var(--secondary);
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        #main-content td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--line);
+            vertical-align: middle;
+        }
+        #main-content tbody tr:last-child td { border-bottom: 0; }
+        #main-content .overflow-x-auto { border-radius: 12px; }
+        #main-content button,
+        #login-screen button {
+            min-height: 36px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+        }
+        #main-content button.bg-indigo-600,
+        #login-screen button {
+            color: #fff;
+            background: #2676b9;
+        }
+        #main-content button.bg-indigo-600:hover,
+        #login-screen button:hover { background: #3187cb; }
+        #main-content button.bg-emerald-600 { background: #226b50; }
+        #main-content button.bg-red-600,
+        #main-content button.bg-rose-700 { background: #762f39; }
+        #main-content button:focus-visible,
+        #admin-dashboard button:focus-visible,
+        #login-screen button:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        #main-content .uppercase { text-transform: none; letter-spacing: 0; }
+        #main-content [class*="text-indigo-"] { color: var(--accent) !important; }
+        #main-content [class*="text-slate-400"],
+        #main-content [class*="text-slate-300"] { color: var(--secondary) !important; }
+        #main-content [class*="text-slate-500"],
+        #main-content [class*="text-slate-600"] { color: var(--muted) !important; }
+        #main-content [class*="text-emerald-"] { color: var(--positive) !important; }
+        @media (max-width: 900px) {
+            #main-content { padding: 24px; }
+            #main-content .grid.grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 640px) {
+            #admin-dashboard { flex-direction: column; }
+            #admin-dashboard aside {
+                position: relative;
+                flex: none;
+                width: 100%;
+                height: auto;
+                padding: 12px 16px;
+                border-right: 0;
+                border-bottom: 1px solid var(--line);
+            }
+            #admin-dashboard aside h1 { margin: 0 0 12px; }
+            #admin-dashboard aside nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            #admin-dashboard aside > button { margin-top: 8px; }
+            #main-content { padding: 20px 16px 32px; }
+            #main-content .grid.grid-cols-2 { grid-template-columns: minmax(0, 1fr); }
+            #main-content .grid.grid-cols-2 > .col-span-1,
+            #main-content .grid.grid-cols-2 > .col-span-2 { grid-column: 1; }
+            #main-content .flex.flex-wrap.items-center.justify-between { align-items: stretch; }
+            #main-content #user-search { width: 100%; }
+            #login-screen > div { padding: 24px; }
+        }
+        @media (max-width: 380px) {
+            #main-content .grid.grid-cols-4 { gap: 8px; }
+            #main-content .grid.grid-cols-4 .glass-panel { padding: 14px; }
+        }
+    </style>
 </head>
 <body class="min-h-screen overflow-x-hidden">
 
@@ -25,10 +219,10 @@
         <aside class="w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col">
             <h1 class="text-xl font-bold text-indigo-500 mb-8"><i class="fa-solid fa-bolt mr-2"></i>Admin Panel</h1>
             <nav class="space-y-2 flex-1">
-                <button class="nav-btn w-full text-left p-3 rounded bg-indigo-600 text-white" onclick="switchTab('dashboard', this)">Dashboard Stats</button>
+                <button class="nav-btn w-full text-left p-3 rounded bg-indigo-600 text-white" onclick="switchTab('dashboard', this)">Dashboard</button>
                 <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('users', this)">User Management</button>
                 <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('withdrawals', this)">Withdrawals</button>
-                <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('settings', this)">System Settings</button>
+                <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('settings', this)">Settings</button>
                 <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('providers', this)">Ad Providers</button>
             </nav>
             <button onclick="adminLogout()" class="w-full p-3 text-left text-red-400 hover:bg-slate-800 rounded">Logout</button>
@@ -74,7 +268,7 @@
     </template>
 
     <template id="tpl-settings">
-        <h2 class="text-2xl font-bold mb-6">System Settings &amp; Ad Providers</h2>
+        <h2 class="text-2xl font-bold mb-6">System settings</h2>
         <div class="glass-panel p-8 grid grid-cols-2 gap-6">
             <div class="col-span-1">
                 <label class="block text-xs text-slate-400 mb-1">Global CPM (USD)</label><input type="number" step="0.01" id="set-cpm" class="w-full bg-slate-900 border border-slate-700 p-2 text-white mb-4">

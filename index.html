@@ -10,23 +10,129 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Poppins', sans-serif; background: #0f172a; color: #f8fafc; padding-bottom: 80px; min-height: 100vh; overflow-x: hidden; -webkit-tap-highlight-color: transparent;}
-        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 1.25rem; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); }
-        .primary-gradient { background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%); }
-        .success-gradient { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-        .nav-item { color: #64748b; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .nav-item.active { color: #60a5fa; transform: translateY(-4px); }
-        .nav-item.active .nav-icon { background: rgba(96, 165, 250, 0.15); color: #60a5fa; box-shadow: 0 0 15px rgba(96, 165, 250, 0.2); }
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+        :root {
+            color-scheme: dark;
+            --page: #0b0d14;
+            --surface: #11141c;
+            --raised: #1a1e28;
+            --line: rgba(238, 240, 245, 0.09);
+            --text: #eef0f5;
+            --secondary: #a3a9b8;
+            --muted: #8d95a8;
+            --accent: #55a7e8;
+            --positive: #4cc38a;
+        }
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: var(--page);
+            color: var(--text);
+            padding-top: 64px;
+            padding-bottom: 88px;
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .glass-panel {
+            background: var(--surface);
+            backdrop-filter: none;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            box-shadow: none;
+        }
+        .font-mono { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
+        .primary-gradient { background: #2676b9; }
+        .success-gradient { background: #226b50; }
+        .nav-item { color: var(--muted); transition: color 160ms ease, background-color 160ms ease; }
+        .nav-item.active { color: var(--accent); transform: none; }
+        .nav-item.active .nav-icon { background: var(--raised); color: var(--accent); box-shadow: none; }
         .ad-timer-circle { border-top-color: #3b82f6; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #343946; border-radius: 6px; }
+        .fade-in { animation: none; }
         .ad-loading-ring { width:34px; height:34px; border:4px solid rgba(255,255,255,.18); border-top-color:#fff; border-radius:50%; display:block; animation:adSpin .8s linear infinite; margin:0 auto 10px; }
         @keyframes adSpin { to { transform:rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         select { -webkit-appearance: none; -moz-appearance: none; appearance: none; background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="%2394a3b8" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>') no-repeat right 10px center; background-size: 20px; }
+        #ui-main-app { min-height: 0; }
+        #ui-loading, #ui-maintenance, #ui-auth { background: var(--page); }
+        #ui-main-app > header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 30;
+            width: 100%;
+            margin: 0 auto;
+            padding: 12px 16px;
+            max-width: 720px;
+            border-width: 0 0 1px;
+            border-radius: 0;
+            background: var(--page);
+        }
+        #ui-main-app > header .w-11 { width: 32px; height: 32px; border-radius: 8px; }
+        #ui-main-app > header .w-11 i { font-size: 15px; }
+        #header-balance { background: transparent; border: 0; box-shadow: none; }
+        #pages-container { width: 100%; }
+        .page-content {
+            width: min(100% - 32px, 640px);
+            margin: 0 auto 24px;
+        }
+        #page-home > .mx-4,
+        #page-home .mx-4 { margin-left: 0; margin-right: 0; }
+        #page-home .glass-panel { padding: 20px; }
+        #ui-main-app [class*="bg-gradient"] { background-image: none; }
+        #shorten-result { background-color: var(--raised); border-color: var(--line); }
+        #page-home h2,
+        #page-home h3,
+        #page-links h2,
+        #page-refer h2,
+        #page-wallet h2 { letter-spacing: 0; text-transform: none; }
+        .uppercase { text-transform: none; letter-spacing: 0; }
+        #long-url-input,
+        #auth-form input,
+        #page-wallet input,
+        #page-wallet select {
+            color: var(--text);
+            background-color: var(--raised);
+            border: 1px solid var(--line);
+            border-radius: 9px;
+            box-shadow: none;
+        }
+        input, select, textarea { accent-color: var(--accent); }
+        input:focus, select:focus, textarea:focus, button:focus-visible, a:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        button { transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease; }
+        button:active { transform: scale(0.98); }
+        .animate-pulse { animation: none !important; }
+        .shadow-2xl, .shadow-lg, .shadow-inner, [class*="shadow-indigo-"], [class*="shadow-emerald-"] { box-shadow: none !important; }
+        [class*="text-indigo-"], [class*="text-sky-"] { color: var(--accent) !important; }
+        [class*="text-slate-400"], [class*="text-slate-300"] { color: var(--secondary) !important; }
+        [class*="text-slate-500"], [class*="text-slate-600"] { color: var(--muted) !important; }
+        [class*="text-emerald-"] { color: var(--positive) !important; }
+        [class*="bg-slate-900"], [class*="bg-slate-800"] { background-color: var(--raised) !important; }
+        #app-bottom-nav {
+            background: rgba(11, 13, 20, 0.98);
+            backdrop-filter: none;
+            border-color: var(--line);
+            padding-bottom: max(8px, env(safe-area-inset-bottom));
+        }
+        #app-bottom-nav .nav-icon { width: 32px; height: 28px; margin-bottom: 2px; border-radius: 8px; font-size: 15px; }
+        #app-bottom-nav span { font-size: 11px; letter-spacing: 0; }
+        #ui-ad-viewer { background: var(--page); }
+        #ui-ad-viewer .glass-panel { max-width: 400px; }
+        #ad-timer-container { box-shadow: none; }
+        @media (min-width: 720px) {
+            #page-home .grid.grid-cols-2 { gap: 12px; }
+        }
+        @media (max-width: 380px) {
+            .page-content { width: calc(100% - 24px); }
+            #page-home .glass-panel { padding: 16px; }
+            #app-bottom-nav .nav-icon { width: 28px; }
+        }
     </style>
 </head>
 <body>
@@ -35,7 +141,7 @@
     <div id="ui-loading" class="fixed inset-0 flex flex-col items-center justify-center bg-[#0f172a] z-50">
         <i class="fa-solid fa-bolt text-5xl text-indigo-500 mb-4 animate-pulse"></i>
         <h2 class="text-2xl font-bold text-white mb-2" id="loading-title">TGShortUrl</h2>
-        <p class="text-slate-400 text-sm" id="loading-text">Connecting to servers...</p>
+        <p class="text-slate-400 text-sm" id="loading-text">Connecting to TGShortUrl</p>
     </div>
 
     <!-- MAINTENANCE SCREEN -->
@@ -53,8 +159,8 @@
         <div class="glass-panel p-8 w-full max-w-md shadow-2xl">
             <div class="text-center mb-8">
                 <i class="fa-solid fa-shield-halved text-4xl text-indigo-500 mb-2"></i>
-                <h2 class="text-2xl font-bold text-white" id="auth-title">Welcome Back</h2>
-                <p class="text-sm text-slate-400" id="auth-subtitle">Secure Login to TGShortUrl</p>
+                <h2 class="text-2xl font-bold text-white" id="auth-title">Sign in</h2>
+                <p class="text-sm text-slate-400" id="auth-subtitle">Sign in to TGShortUrl</p>
             </div>
             
             <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
@@ -99,7 +205,7 @@
                     <h2 class="text-xs font-bold text-indigo-400 mb-3 uppercase tracking-wider"><i class="fa-solid fa-link mr-2"></i> Create Short Link</h2>
                     <input type="url" id="long-url-input" placeholder="Paste your long URL here..." class="w-full bg-slate-900/80 border border-slate-700 text-white rounded-xl p-4 mb-4 focus:outline-none focus:border-indigo-500 transition-colors text-sm shadow-inner">
                     <button id="btn-shorten" class="w-full primary-gradient hover:opacity-90 text-white font-bold py-4 rounded-xl flex items-center justify-center space-x-2 shadow-lg shadow-indigo-500/25 transition-transform active:scale-95">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i><span>Shorten & Earn</span>
+                        <i class="fa-solid fa-link"></i><span>Shorten link</span>
                     </button>
                     <div id="shorten-result" class="hidden mt-5 p-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 rounded-xl">
                         <div class="flex justify-between items-center bg-slate-900 rounded-lg p-3">
@@ -112,7 +218,7 @@
 
                 <div class="mx-4 mb-6">
                     <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
-                        <h3 class="text-sm font-bold text-white uppercase tracking-wider"><i class="fa-solid fa-chart-column text-indigo-400 mr-2"></i>Today's Report</h3>
+                        <h3 class="text-sm font-bold text-white uppercase tracking-wider"><i class="fa-solid fa-chart-column text-indigo-400 mr-2"></i>Today</h3>
                         <span class="text-xs text-slate-400">Today only</span>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
@@ -124,7 +230,7 @@
                 </div>
                 <div class="mx-4 mb-6">
                     <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
-                        <h3 class="text-sm font-bold text-white uppercase tracking-wider"><i class="fa-solid fa-calendar-days text-indigo-400 mr-2"></i>Monthly Report</h3>
+                        <h3 class="text-sm font-bold text-white uppercase tracking-wider"><i class="fa-solid fa-calendar-days text-indigo-400 mr-2"></i>Monthly</h3>
                         <input id="report-month-picker" type="month" class="bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-xs max-w-[155px]" aria-label="Select report month">
                     </div>
                     <div class="grid grid-cols-2 gap-4">
@@ -158,7 +264,7 @@
             <!-- PAGE: REFER -->
             <div id="page-refer" class="page-content hidden mx-4 mb-6 fade-in">
                 <div class="glass-panel p-6 text-center mb-6 relative overflow-hidden">
-                    <h2 class="text-2xl font-bold text-white mb-2">Invite Friends</h2>
+                    <h2 class="text-2xl font-bold text-white mb-2">Invite friends</h2>
                     <p class="text-sm text-slate-300 mb-6">Earn a lifetime <span class="text-emerald-400 font-bold bg-emerald-500/10 px-2 rounded"><span id="refer-commission">1</span>%</span> commission from your friends' earnings!</p>
                     <div class="bg-slate-900 rounded-xl p-2 flex items-center justify-between border border-slate-700">
                         <span id="referral-link-display" class="text-xs font-mono text-slate-300 truncate px-3 w-[75%]">Generating...</span>
@@ -191,7 +297,7 @@
                     <div class="mb-6"><input type="url" id="withdraw-telegram" placeholder="Your Telegram Channel/Group Link (Required)" class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-3 text-sm"></div>
                     <button id="withdraw-submit-btn" onclick="submitWithdrawal()" class="w-full success-gradient text-white font-bold py-4 rounded-xl shadow-lg">Submit Request</button>
                     <div id="withdrawal-weekend-status" class="hidden w-full rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-center">
-                        <div class="text-sm font-bold text-emerald-300"><i class="fa-solid fa-calendar-check mr-2"></i>⏰ WITHDRAWALS OPEN EVERY SATURDAY &amp; SUNDAY</div>
+                        <div class="text-sm font-bold text-emerald-300"><i class="fa-solid fa-calendar-check mr-2"></i>Withdrawals open every Saturday and Sunday</div>
                         <div class="text-xs text-slate-200 mt-1">Withdrawals can be requested every Saturday and Sunday.</div>
                     </div>
                 </div>
