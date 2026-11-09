@@ -224,6 +224,7 @@
                 <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('withdrawals', this)">Withdrawals</button>
                 <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('settings', this)">Settings</button>
                 <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('providers', this)">Ad Providers</button>
+                <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('broadcast', this)">Broadcast</button>
             </nav>
             <button onclick="adminLogout()" class="w-full p-3 text-left text-red-400 hover:bg-slate-800 rounded">Logout</button>
         </aside>
@@ -297,6 +298,37 @@
         <div class="mt-6 flex flex-wrap gap-3"><button onclick="saveAdProviders()" class="bg-emerald-600 hover:bg-emerald-500 px-5 py-3 rounded-lg font-bold">Save Ad Providers</button><button onclick="loadAdProviders()" class="bg-slate-700 px-5 py-3 rounded-lg font-bold">Reload</button></div>
     </template>
 
+    <template id="tpl-broadcast">
+        <h2 class="text-2xl font-bold mb-2">Broadcast</h2>
+        <p class="text-sm text-slate-400 mb-6">Send a text message or a photo with caption to registered Telegram users.</p>
+        <div class="glass-panel max-w-3xl space-y-4">
+            <div>
+                <label for="broadcast-message" class="block text-xs text-slate-400 mb-1">Message / Photo caption</label>
+                <textarea id="broadcast-message" rows="5" maxlength="4096" placeholder="Write your message here..." class="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg"></textarea>
+                <p class="text-xs text-slate-500 mt-1">Text limit: 4,096 characters. Photo caption limit: 1,024 characters. Messages are sent as plain text.</p>
+            </div>
+            <div>
+                <label for="broadcast-image-url" class="block text-xs text-slate-400 mb-1">Image URL (optional)</label>
+                <input id="broadcast-image-url" type="url" inputmode="url" placeholder="https://example.com/image.jpg" class="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg">
+                <p class="text-xs text-slate-500 mt-1">Use a publicly accessible HTTPS image URL. Leave empty for text-only broadcast.</p>
+            </div>
+            <label class="inline-flex items-center gap-2 text-sm text-slate-300"><input id="broadcast-button" type="checkbox" checked> Add Open TGShortUrl button</label>
+            <div class="flex flex-wrap items-center gap-3">
+                <button id="broadcast-send" type="button" onclick="startBroadcast()" class="bg-indigo-600 hover:bg-indigo-500 px-5 py-3 rounded-lg font-bold">Send Broadcast</button>
+                <span id="broadcast-status" class="text-sm text-slate-400" role="status" aria-live="polite"></span>
+            </div>
+            <div id="broadcast-progress-wrap" class="hidden pt-2">
+                <div class="flex justify-between text-xs text-slate-400 mb-2"><span id="broadcast-progress-label">Preparing...</span><span id="broadcast-progress-count">0%</span></div>
+                <div class="h-2 rounded-full bg-slate-800 overflow-hidden"><div id="broadcast-progress-bar" class="h-full bg-indigo-500" style="width:0%"></div></div>
+                <div class="grid grid-cols-3 gap-3 mt-4 text-sm">
+                    <div class="bg-slate-900 rounded-lg p-3"><div class="text-slate-400 text-xs">Sent</div><div id="broadcast-sent" class="text-emerald-400 text-xl font-semibold">0</div></div>
+                    <div class="bg-slate-900 rounded-lg p-3"><div class="text-slate-400 text-xs">Failed</div><div id="broadcast-failed" class="text-rose-400 text-xl font-semibold">0</div></div>
+                    <div class="bg-slate-900 rounded-lg p-3"><div class="text-slate-400 text-xs">Total</div><div id="broadcast-total" class="text-xl font-semibold">0</div></div>
+                </div>
+            </div>
+        </div>
+    </template>
+
     <script>
         const SUPABASE_URL = 'https://nfjgjusfvuatjytfpfhf.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_aPROutC-ZbCxrxsJat8oFQ_2vI-eoaU';
@@ -351,6 +383,7 @@
         }
 
         window.switchTab = function(tab, btn) {
+            if (broadcastRunning && tab !== 'broadcast') { alert('Please wait until the broadcast finishes.'); return; }
             document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('bg-indigo-600', 'text-white'); b.classList.add('text-slate-400'); });
             if(btn) { btn.classList.add('bg-indigo-600', 'text-white'); btn.classList.remove('text-slate-400'); }
             document.getElementById('main-content').innerHTML = document.getElementById(`tpl-${tab}`).innerHTML;
@@ -359,6 +392,7 @@
             if(tab === 'withdrawals') loadWithdrawals();
             if(tab === 'settings') loadSettings();
             if(tab === 'providers') loadAdProviders();
+            if(tab === 'broadcast') resetBroadcastView();
         }
 
         async function loadDash() {
@@ -464,6 +498,85 @@
             const res = await fetchApi('saveSettings', { data: req });
             if(res.error) alert(res.error); else alert('Settings Saved!');
         }
+
+        let broadcastRunning = false;
+        window.resetBroadcastView = function() {
+            if (broadcastRunning) return;
+            const wrap = document.getElementById('broadcast-progress-wrap');
+            if (wrap) wrap.classList.add('hidden');
+            const button = document.getElementById('broadcast-send');
+            if (button) { button.disabled = false; button.textContent = 'Send Broadcast'; }
+            const status = document.getElementById('broadcast-status');
+            if (status) status.textContent = '';
+        };
+
+        window.startBroadcast = async function() {
+            if (broadcastRunning) return;
+            const message = document.getElementById('broadcast-message')?.value.trim() || '';
+            const imageUrl = document.getElementById('broadcast-image-url')?.value.trim() || '';
+            const useButton = document.getElementById('broadcast-button')?.checked !== false;
+            const status = document.getElementById('broadcast-status');
+            if (!message) { alert('Enter a message or photo caption first.'); return; }
+            if (imageUrl) {
+                try {
+                    const parsed = new URL(imageUrl);
+                    if (parsed.protocol !== 'https:') throw new Error('HTTPS required');
+                } catch { alert('Enter a valid public HTTPS image URL.'); return; }
+                if (message.length > 1024) { alert('Photo caption must be 1,024 characters or fewer.'); return; }
+            } else if (message.length > 4096) {
+                alert('Text message must be 4,096 characters or fewer.'); return;
+            }
+            if (!confirm('Send this broadcast to all registered Telegram users? This action cannot be undone.')) return;
+
+            broadcastRunning = true;
+            const button = document.getElementById('broadcast-send');
+            const wrap = document.getElementById('broadcast-progress-wrap');
+            const progressBar = document.getElementById('broadcast-progress-bar');
+            const progressLabel = document.getElementById('broadcast-progress-label');
+            const progressCount = document.getElementById('broadcast-progress-count');
+            const sentEl = document.getElementById('broadcast-sent');
+            const failedEl = document.getElementById('broadcast-failed');
+            const totalEl = document.getElementById('broadcast-total');
+            button.disabled = true;
+            button.textContent = 'Sending...';
+            wrap.classList.remove('hidden');
+            status.textContent = 'Starting broadcast...';
+            let offset = 0, sent = 0, failed = 0, total = null;
+            try {
+                let done = false;
+                while (!done) {
+                    const response = await fetch('/api/broadcast', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionToken}` },
+                        body: JSON.stringify({ offset, message, image_url: imageUrl, use_button: useButton })
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.ok) throw new Error(result.error || 'Broadcast request failed.');
+                    sent += Number(result.sent || 0);
+                    failed += Number(result.failed || 0);
+                    total = Number(result.total || 0);
+                    offset = Number(result.next_offset || offset);
+                    done = !!result.done;
+                    const processed = Math.min(offset, total);
+                    const percent = total ? Math.min(100, Math.round(processed / total * 100)) : 100;
+                    sentEl.textContent = sent;
+                    failedEl.textContent = failed;
+                    totalEl.textContent = total;
+                    progressBar.style.width = `${percent}%`;
+                    progressCount.textContent = `${percent}%`;
+                    progressLabel.textContent = `Processed ${processed} of ${total}`;
+                    status.textContent = done ? 'Broadcast completed.' : 'Sending messages...';
+                }
+                if (total === 0) status.textContent = 'No registered Telegram users were found.';
+                else status.textContent = `Broadcast completed. Sent: ${sent}, failed: ${failed}.`;
+            } catch (error) {
+                status.textContent = `Stopped: ${error.message} Refresh this section before retrying; already sent messages will not be rolled back.`;
+            } finally {
+                broadcastRunning = false;
+                button.disabled = false;
+                button.textContent = 'Send Broadcast';
+            }
+        };
 
         let adProviders = [];
         function safeProviderId(name) {
