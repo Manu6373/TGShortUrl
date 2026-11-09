@@ -71,6 +71,14 @@
             border-radius: 0;
             background: var(--page);
         }
+        /* Telegram Mini App: keep the app header below Telegram's native top controls.
+           The regular website layout remains unchanged. */
+        html.telegram-mini-app body {
+            padding-top: calc(64px + var(--tg-content-safe-area-inset-top, env(safe-area-inset-top, 0px)));
+        }
+        html.telegram-mini-app #ui-main-app > header {
+            top: var(--tg-content-safe-area-inset-top, env(safe-area-inset-top, 0px));
+        }
         #ui-main-app > header .w-11 { width: 32px; height: 32px; border-radius: 8px; }
         #ui-main-app > header .w-11 i { font-size: 15px; }
         #header-balance { background: transparent; border: 0; box-shadow: none; }
@@ -365,6 +373,29 @@
         let adminSettings = {};
         
         const tg = window.Telegram.WebApp;
+
+        // Apply extra top spacing only inside Telegram Mini Apps.
+        // Telegram's contentSafeAreaInset accounts for its native top controls;
+        // normal browser visits keep the existing header position.
+        if (tg.initData) {
+            document.documentElement.classList.add('telegram-mini-app');
+
+            const syncTelegramContentSafeArea = () => {
+                const topInset = Number(tg.contentSafeAreaInset?.top);
+                if (Number.isFinite(topInset) && topInset >= 0) {
+                    document.documentElement.style.setProperty(
+                        '--tg-content-safe-area-inset-top',
+                        `${topInset}px`
+                    );
+                }
+            };
+
+            syncTelegramContentSafeArea();
+            if (typeof tg.onEvent === 'function') {
+                tg.onEvent('contentSafeAreaChanged', syncTelegramContentSafeArea);
+            }
+        }
+
         tg.expand(); tg.setHeaderColor('#0f172a');
         let isLoginMode = true;
 
