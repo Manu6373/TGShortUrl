@@ -1,85 +1,129 @@
+import { createClient } from '@supabase/supabase-js';
+
+const BATCH_SIZE = 50;
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 export default async function handler(req, res) {
-    // Only allow POST requests
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const url = process.env.SUPABASE_URL;
+  const anon = process.env.SUPABASE_ANON_KEY;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const botToken = process.env.BOT_TOKEN;
+  if (!url || !anon || !serviceKey || !botToken) {
+    return res.status(500).json({ error: 'Server configuration is incomplete.' });
+  }
+
+  // Authenticate the caller and verify admin status on the server for every batch.
+  const token = (req.headers.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
+  if (!token) return res.status(401).json({ error: 'Login required.' });
+
+  const authClient = createClient(url, anon, { auth: { persistSession: false } });
+  const { data: authData, error: authError } = await authClient.auth.getUser(token);
+  if (authError || !authData?.user) return res.status(401).json({ error: 'Invalid login.' });
+
+  const db = createClient(url, serviceKey, { auth: { persistSession: false } });
+  const { data: admin, error: adminError } = await db
+    .from('users')
+    .select('id,is_admin')
+    .or(`auth_id.eq.${authData.user.id},auth_user_id.eq.${authData.user.id}`)
+    .maybeSingle();
+  if (adminError) return res.status(500).json({ error: 'Could not verify admin access.' });
+  if (!admin?.is_admin) return res.status(403).json({ error: 'Admin access denied.' });
+
+  const body = req.body || {};
+  const offset = Number(body.offset ?? 0);
+  const imageUrl = typeof body.image_url === 'string' ? body.image_url.trim() : '';
+  const message = typeof body.message === 'string' ? body.message.trim() : '';
+  const useButton = body.use_button !== false;
+
+  if (!Number.isSafeInteger(offset) || offset < 0) return res.status(400).json({ error: 'Invalid batch offset.' });
+  if (!message) return res.status(400).json({ error: 'Enter a message or photo caption.' });
+  if (imageUrl) {
+    try {
+      const parsed = new URL(imageUrl);
+      if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('Invalid URL');
+    } catch {
+      return res.status(400).json({ error: 'Image URL must be a valid public HTTPS URL.' });
     }
+    if (message.length > 1024) return res.status(400).json({ error: 'Photo caption must be 1,024 characters or fewer.' });
+  } else if (message.length > 4096) {
+    return res.status(400).json({ error: 'Text message must be 4,096 characters or fewer.' });
+  }
 
-    const { chat_ids, image_url, caption, use_button, mini_app_url } = req.body;
-    const BOT_TOKEN = process.env.BOT_TOKEN; 
+  const { data: recipients, count, error: usersError } = await db
+    .from('users')
+    .select('telegram_id', { count: 'exact' })
+    .not('telegram_id', 'is', null)
+    .order('id', { ascending: true })
+    .range(offset, offset + BATCH_SIZE - 1);
 
-    // Security check for Bot Token
-    if (!BOT_TOKEN) {
-        return res.status(500).json({ error: 'BOT_TOKEN is missing on server.' });
-    }
+  if (usersError) return res.status(500).json({ error: 'Could not load registered Telegram users.' });
 
-    if (!chat_ids || !Array.isArray(chat_ids)) {
-        return res.status(400).json({ error: 'Invalid chat_ids array.' });
-    }
+  const chatIds = [...new Set((recipients || [])
+    .map(row => String(row.telegram_id || '').trim())
+    .filter(value => /^-?\d+$/.test(value)))];
 
-    let sent = 0;
-    let failed = 0;
+  const replyMarkup = useButton ? {
+    inline_keyboard: [[{ text: '👉 Open TGShortUrl 👈', web_app: { url: 'https://tgshorturl.vercel.app/' } }]]
+  } : undefined;
 
-    // --- SMART BUTTON LOGIC ---
-    let buttonConfig = {};
-    const finalUrl = mini_app_url || "https://tgshorturl.vercel.app/";
-    
-    // If the link is a t.me link, use normal 'url', otherwise open as an inside-Telegram 'web_app'
-    if (finalUrl.includes('t.me')) {
-        buttonConfig = { url: finalUrl };
+  let sent = 0;
+  let failed = 0;
+  const endpoint = imageUrl ? 'sendPhoto' : 'sendMessage';
+
+  for (const chatId of chatIds) {
+    const payload = { chat_id: chatId };
+    if (imageUrl) {
+      payload.photo = imageUrl;
+      payload.caption = message;
     } else {
-        buttonConfig = { web_app: { url: finalUrl } };
+      payload.text = message;
     }
+    if (replyMarkup) payload.reply_markup = replyMarkup;
 
-    // Default to showing the button unless explicitly disabled
-    const showButton = use_button !== false; 
-    const reply_markup = showButton ? {
-        inline_keyboard: [[{ 
-            text: "👉 Open TGShortUrl 👈", 
-            ...buttonConfig 
-        }]]
-    } : undefined;
-    // -------------------------
+    try {
+      let response = await fetch(`https://api.telegram.org/bot${botToken}/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      let result = await response.json();
 
-    // Determine if sending a text message or a photo message
-    const endpoint = image_url ? 'sendPhoto' : 'sendMessage';
+      // Respect Telegram's retry_after response for rate limiting.
+      if (!result.ok && response.status === 429 && Number(result.parameters?.retry_after) > 0) {
+        await delay(Math.min(Number(result.parameters.retry_after) * 1000, 5000));
+        response = await fetch(`https://api.telegram.org/bot${botToken}/${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        result = await response.json();
+      }
 
-    for (const chat_id of chat_ids) {
-        try {
-            const payload = {
-                chat_id: chat_id,
-                parse_mode: 'HTML',
-                reply_markup: reply_markup
-            };
-
-            if (image_url) {
-                payload.photo = image_url;
-                payload.caption = caption || '';
-            } else {
-                payload.text = caption || '';
-            }
-
-            const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${endpoint}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await response.json();
-            if (data.ok) {
-                sent++;
-            } else {
-                failed++;
-                console.error(`Error for ${chat_id}:`, data.description);
-            }
-
-            // Telegram API limits bots to ~30 messages per second. 
-            // 35ms delay = approx 28 messages per second to keep you safe from bans.
-            await new Promise(resolve => setTimeout(resolve, 35));
-
-        } catch (error) {
-            failed++;
-        }
+      if (result.ok) sent++;
+      else {
+        failed++;
+        console.warn('Broadcast delivery failed:', chatId, result.description || response.status);
+      }
+    } catch (error) {
+      failed++;
+      console.warn('Broadcast request failed:', error?.message || error);
     }
+    await delay(40);
+  }
 
-    return res.status(200).json({ sent, failed });
+  const nextOffset = offset + (recipients || []).length;
+  return res.status(200).json({
+    ok: true,
+    sent,
+    failed,
+    processed: (recipients || []).length,
+    total: count || 0,
+    next_offset: nextOffset,
+    done: nextOffset >= (count || 0) || (recipients || []).length === 0
+  });
 }
