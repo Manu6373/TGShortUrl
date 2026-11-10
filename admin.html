@@ -210,7 +210,16 @@
             <h2 class="text-2xl font-bold mb-6">TGShortUrl Admin</h2>
             <input type="email" id="admin-email" placeholder="Admin Email" class="w-full bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-lg mb-4">
             <input type="password" id="admin-password" placeholder="Admin Password" class="w-full bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-lg mb-4">
-            <button onclick="adminLogin()" class="w-full bg-indigo-600 font-bold py-3 rounded-lg">Login</button>
+            <button id="admin-login-button" onclick="adminLogin()" class="w-full bg-indigo-600 font-bold py-3 rounded-lg">Login</button>
+            <div id="admin-mfa-step" class="hidden mt-4 text-left">
+                <p id="admin-mfa-instructions" class="text-sm text-slate-300 mb-3">Enter the 6-digit code from your authenticator app.</p>
+                <div id="admin-mfa-qr-wrap" class="hidden text-center mb-3">
+                    <img id="admin-mfa-qr" alt="Authenticator setup QR code" class="mx-auto max-w-full bg-white p-2 rounded">
+                    <p class="text-xs text-slate-400 mt-2">Scan this QR code with Google Authenticator, then enter the code.</p>
+                </div>
+                <input id="admin-mfa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="6-digit authenticator code" class="w-full bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-lg mb-3">
+                <button id="admin-mfa-verify" onclick="verifyAdminMfa()" class="w-full bg-indigo-600 font-bold py-3 rounded-lg">Verify code</button>
+            </div>
             <p id="admin-login-error" class="text-rose-400 text-sm mt-3" role="alert"></p>
         </div>
     </div>
@@ -335,29 +344,127 @@
         let dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let sessionToken = '';
 
+        let pendingMfaFactorId = null;
+        let pendingMfaChallengeId = null;
+        let mfaEnrollmentRequired = false;
+
+        function showLoginError(message) {
+            const msg = document.getElementById('admin-login-error');
+            if (msg) msg.textContent = message || '';
+        }
+
+        function showMfaStep(instructions, qrCode) {
+            document.getElementById('admin-mfa-step').classList.remove('hidden');
+            document.getElementById('admin-mfa-instructions').textContent = instructions;
+            const qrWrap = document.getElementById('admin-mfa-qr-wrap');
+            const qr = document.getElementById('admin-mfa-qr');
+            if (qrCode) {
+                qr.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(qrCode)));
+                qrWrap.classList.remove('hidden');
+            } else {
+                qr.removeAttribute('src');
+                qrWrap.classList.add('hidden');
+            }
+            document.getElementById('admin-mfa-code').value = '';
+            document.getElementById('admin-mfa-code').focus();
+        }
+
+        async function beginAdminMfa() {
+            showLoginError('');
+            const { data: assurance, error: assuranceError } = await dbClient.auth.mfa.getAuthenticatorAssuranceLevel();
+            if (assuranceError) throw assuranceError;
+            if (assurance?.currentLevel === 'aal2') return finishAdminLogin();
+
+            const { data: factorsData, error: factorsError } = await dbClient.auth.mfa.listFactors();
+            if (factorsError) throw factorsError;
+            const verifiedTotp = (factorsData?.totp || []).find(f => f.status === 'verified');
+
+            if (verifiedTotp) {
+                pendingMfaFactorId = verifiedTotp.id;
+                mfaEnrollmentRequired = false;
+                const { data: challenge, error } = await dbClient.auth.mfa.challenge({ factorId: pendingMfaFactorId });
+                if (error) throw error;
+                pendingMfaChallengeId = challenge.id;
+                showMfaStep('Enter the 6-digit code from Google Authenticator to continue.');
+                return;
+            }
+
+            // First-time setup: enroll a TOTP factor, then verify it before granting admin access.
+            const { data: enrollment, error: enrollError } = await dbClient.auth.mfa.enroll({
+                factorType: 'totp',
+                friendlyName: 'TGShortUrl Admin'
+            });
+            if (enrollError) throw enrollError;
+            pendingMfaFactorId = enrollment.id;
+            mfaEnrollmentRequired = true;
+            showMfaStep('First-time setup: scan this QR code in Google Authenticator, then enter the 6-digit code.', enrollment.totp.qr_code);
+        }
+
+        async function verifyAdminMfa() {
+            const code = document.getElementById('admin-mfa-code').value.trim();
+            if (!/^\\d{6}$/.test(code)) { showLoginError('Enter a valid 6-digit authenticator code.'); return; }
+            const button = document.getElementById('admin-mfa-verify');
+            button.disabled = true;
+            showLoginError('');
+            try {
+                let challengeId = pendingMfaChallengeId;
+                if (mfaEnrollmentRequired) {
+                    const { data: challenge, error: challengeError } = await dbClient.auth.mfa.challenge({ factorId: pendingMfaFactorId });
+                    if (challengeError) throw challengeError;
+                    challengeId = challenge.id;
+                }
+                const { error: verifyError } = await dbClient.auth.mfa.verify({
+                    factorId: pendingMfaFactorId,
+                    challengeId,
+                    code
+                });
+                if (verifyError) throw verifyError;
+                pendingMfaChallengeId = null;
+                pendingMfaFactorId = null;
+                mfaEnrollmentRequired = false;
+                await finishAdminLogin();
+            } catch (error) {
+                showLoginError(error.message || 'Authenticator verification failed. Try again.');
+            } finally {
+                button.disabled = false;
+            }
+        }
+        window.verifyAdminMfa = verifyAdminMfa;
+
+        async function finishAdminLogin() {
+            const { data: { session }, error: sessionError } = await dbClient.auth.getSession();
+            if (sessionError) throw sessionError;
+            if (!session) throw new Error('Please sign in again.');
+            sessionToken = session.access_token;
+            const { data: assurance, error: assuranceError } = await dbClient.auth.mfa.getAuthenticatorAssuranceLevel();
+            if (assuranceError) throw assuranceError;
+            if (assurance?.currentLevel !== 'aal2') throw new Error('Two-factor verification is required.');
+            const { data: u, error: userError } = await dbClient
+                .from('users').select('is_admin')
+                .or(`auth_id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`)
+                .maybeSingle();
+            if (userError) throw userError;
+            if (!u?.is_admin) {
+                await dbClient.auth.signOut();
+                throw new Error('This account is not marked as an administrator in the users table.');
+            }
+            document.getElementById('admin-mfa-step').classList.add('hidden');
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('admin-dashboard').classList.remove('hidden');
+            switchTab('dashboard', document.querySelector('.nav-btn'));
+            return true;
+        }
+
         async function checkAdmin() {
             try {
                 const { data: { session }, error: sessionError } = await dbClient.auth.getSession();
                 if (sessionError) throw sessionError;
                 if (!session) return false;
-                sessionToken = session.access_token;
-                const { data: u, error: userError } = await dbClient
-                    .from('users').select('is_admin')
-                    .or(`auth_id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`)
-                    .maybeSingle();
-                if (userError) throw userError;
-                if (!u?.is_admin) {
-                    await dbClient.auth.signOut();
-                    throw new Error('This account is not marked as an administrator in the users table.');
-                }
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('admin-dashboard').classList.remove('hidden');
-                switchTab('dashboard', document.querySelector('.nav-btn'));
+                await beginAdminMfa();
                 return true;
             } catch (error) {
                 console.error('Admin authentication error:', error);
-                const msg = document.getElementById('admin-login-error');
-                if (msg) msg.textContent = error.message || 'Could not verify admin access.';
+                showLoginError(error.message || 'Could not verify admin access.');
                 return false;
             }
         }
@@ -366,12 +473,19 @@
         async function adminLogin() {
             const email = document.getElementById('admin-email').value.trim();
             const pass = document.getElementById('admin-password').value;
-            const msg = document.getElementById('admin-login-error');
-            if (msg) msg.textContent = '';
-            if (!email || !pass) { if (msg) msg.textContent = 'Enter your email and password.'; return; }
-            const { error } = await dbClient.auth.signInWithPassword({ email, password: pass });
-            if (error) { if (msg) msg.textContent = error.message; return; }
-            await checkAdmin();
+            showLoginError('');
+            if (!email || !pass) { showLoginError('Enter your email and password.'); return; }
+            const button = document.getElementById('admin-login-button');
+            button.disabled = true;
+            try {
+                const { error } = await dbClient.auth.signInWithPassword({ email, password: pass });
+                if (error) throw error;
+                await beginAdminMfa();
+            } catch (error) {
+                showLoginError(error.message || 'Login failed.');
+            } finally {
+                button.disabled = false;
+            }
         }
         async function adminLogout() { await dbClient.auth.signOut(); location.reload(); }
         async function fetchApi(action, data={}) {
