@@ -389,7 +389,7 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_aPROutC-ZbCxrxsJat8oFQ_2vI-eoaU';
         const VERCEL_API_URL = '/api'; 
         const BOT_USERNAME = 'TGShortUrlBot'; 
-        const APP_SHORT_NAME = 'tgshorturlvercel'; 
+        const APP_SHORT_NAME = 'view'; 
 
         let dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let currentUserData = null;
@@ -629,8 +629,10 @@
                 if (startParam && /^ref_\d+$/.test(startParam)) {
                     localStorage.setItem('tgshorturl_pending_referral', startParam);
                 }
-                if (startParam && startParam.startsWith('link_')) {
-                    window.currentShortId = startParam.replace('link_', '');
+                const isLegacyShortLink = typeof startParam === 'string' && startParam.startsWith('link_');
+                const isNewShortLink = typeof startParam === 'string' && /^[A-Za-z0-9]{4,6}$/.test(startParam);
+                if (isLegacyShortLink || isNewShortLink) {
+                    window.currentShortId = isLegacyShortLink ? startParam.slice(5) : startParam;
                     document.getElementById('ui-main-app').classList.add('hidden');
                     document.getElementById('app-bottom-nav').classList.add('hidden');
                     document.getElementById('ui-loading').classList.add('hidden');
@@ -917,10 +919,33 @@
                 const button = this;
                 button.disabled = true;
                 try {
-                    const shortId = Math.random().toString(36).substring(2, 10);
-                    const { error } = await dbClient.from('links').insert([{ original_url: url, short_id: shortId, user_id: currentUserData.id }]);
-                    if (error) throw error;
-                    document.getElementById('short-link-display').innerText = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=link_${shortId}`;
+                    // Create a unique 6-character Base62 ID. Check the database before insert
+                    // and retry on collisions; legacy link IDs remain valid.
+                    const alphabet = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                    let shortId = '';
+                    let created = false;
+                    for (let attempt = 0; attempt < 8; attempt++) {
+                        const bytes = new Uint8Array(6);
+                        crypto.getRandomValues(bytes);
+                        shortId = Array.from(bytes, value => alphabet[value % alphabet.length]).join('');
+                        const { data: existing, error: lookupError } = await dbClient
+                            .from('links').select('id').eq('short_id', shortId).maybeSingle();
+                        if (lookupError) throw lookupError;
+                        if (existing) continue;
+                        const { error: insertError } = await dbClient.from('links').insert([{
+                            original_url: url,
+                            short_id: shortId,
+                            user_id: currentUserData.id
+                        }]);
+                        if (insertError) {
+                            if (insertError.code === '23505') continue;
+                            throw insertError;
+                        }
+                        created = true;
+                        break;
+                    }
+                    if (!created) throw new Error('Could not generate a unique short ID. Please try again.');
+                    document.getElementById('short-link-display').innerText = `https://t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=${shortId}`;
                     document.getElementById('shorten-result').classList.remove('hidden');
                     document.getElementById('long-url-input').value = '';
                 } catch (error) {
@@ -1056,7 +1081,7 @@
             const { data } = await dbClient.from('links').select('*').eq('user_id', currentUserData.id).order('created_at', { ascending: false }).limit(30);
             const list = document.getElementById('links-list'); list.innerHTML = '';
             data?.forEach(l => {
-                list.innerHTML += `<div class="glass-panel p-4 mb-3"><div class="text-indigo-400 text-xs truncate mb-2">t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=link_${l.short_id}</div><div class="flex justify-between items-center text-xs"><span><i class="fa-solid fa-eye text-slate-400"></i> ${l.clicks||0}</span>${formatCurrencyLeft(l.earnings)}</div></div>`;
+                list.innerHTML += `<div class="glass-panel p-4 mb-3"><div class="text-indigo-400 text-xs truncate mb-2">t.me/${BOT_USERNAME}/${APP_SHORT_NAME}?startapp=${l.short_id}</div><div class="flex justify-between items-center text-xs"><span><i class="fa-solid fa-eye text-slate-400"></i> ${l.clicks||0}</span>${formatCurrencyLeft(l.earnings)}</div></div>`;
             });
         }
 
@@ -1293,4 +1318,4 @@
         window.onload = initApp;
     </script>
 </body>
-</html>
+                                             </html>
