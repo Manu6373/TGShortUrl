@@ -448,7 +448,7 @@
 
         async function verifyAdminMfa() {
             const code = document.getElementById('admin-mfa-code').value.trim();
-            if (!/^\\d{6}$/.test(code)) { showLoginError('Enter a valid 6-digit authenticator code.'); return; }
+            if (!/^\d{6}$/.test(code)) { showLoginError('Enter a valid 6-digit authenticator code.'); return; }
             const button = document.getElementById('admin-mfa-verify');
             button.disabled = true;
             showLoginError('');
