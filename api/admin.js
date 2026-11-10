@@ -24,6 +24,19 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Invalid login' });
   }
 
+  // getUser(token) validates the JWT signature; inspect its verified claims for MFA assurance.
+  let tokenClaims;
+  try {
+    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    tokenClaims = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
+  } catch {
+    return res.status(401).json({ error: 'Invalid authentication token.' });
+  }
+
+  if (tokenClaims.aal !== 'aal2') {
+    return res.status(403).json({ error: 'Two-factor authentication required.' });
+  }
+
   const db = createClient(url, secret, { auth: { persistSession: false } });
 
   try {
@@ -191,28 +204,43 @@ export default async function handler(req, res) {
     }
 
     if (action === 'block') {
-      const r = await db.from('users').update({ is_blocked: !!block }).eq('id', id).eq('is_admin', false).select('id');
+      const r = await db.from('users')
+        .update({ is_blocked: !!block })
+        .eq('id', id)
+        .eq('is_admin', false)
+        .select('id');
+
       if (r.error) throw r.error;
       if (!r.data?.length) throw new Error('User not found or is admin');
       return res.json({ ok: true });
     }
 
     if (action === 'withdrawals') {
-      const r = await db.from('withdrawals').select('*').order('created_at', { ascending: false }).limit(1000);
+      const r = await db.from('withdrawals')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1000);
+
       if (r.error) throw r.error;
+
       const userIds = [...new Set((r.data || []).map(w => w.user_id).filter(Boolean))];
       let profiles = [];
+
       if (userIds.length) {
         const profileResult = await db.from('users')
           .select('id,auth_id,auth_user_id,email,telegram_id,first_name,last_name,username')
           .in('id', userIds);
+
         if (profileResult.error) throw profileResult.error;
         profiles = await addRegisteredEmails(profileResult.data);
       }
+
       const profileMap = new Map(profiles.map(profile => [String(profile.id), profile]));
+
       const enriched = (r.data || []).map(withdrawal => {
         const profile = profileMap.get(String(withdrawal.user_id)) || {};
         const tgName = [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim();
+
         return {
           ...withdrawal,
           user_details: {
@@ -222,6 +250,7 @@ export default async function handler(req, res) {
           }
         };
       });
+
       return res.json({ data: enriched });
     }
 
@@ -229,12 +258,15 @@ export default async function handler(req, res) {
       if (!['approved', 'rejected', 'paid'].includes(status)) {
         return res.status(400).json({ error: 'Invalid status' });
       }
+
       const r = await db.rpc('admin_process_withdrawal', {
         p_withdrawal_id: id,
         p_status: status
       });
+
       if (r.error) throw r.error;
       if (!r.data?.success) throw new Error(r.data?.message || 'Update failed');
+
       return res.json({ ok: true });
     }
 
