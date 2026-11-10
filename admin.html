@@ -359,7 +359,7 @@
             const qrWrap = document.getElementById('admin-mfa-qr-wrap');
             const qr = document.getElementById('admin-mfa-qr');
             if (qrCode) {
-                qr.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(qrCode)));
+                qr.src = qrCode.startsWith('data:image/') ? qrCode : ('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(qrCode));
                 qrWrap.classList.remove('hidden');
             } else {
                 qr.removeAttribute('src');
@@ -377,7 +377,8 @@
 
             const { data: factorsData, error: factorsError } = await dbClient.auth.mfa.listFactors();
             if (factorsError) throw factorsError;
-            const totpFactors = factorsData?.totp || [];
+            // listFactors().totp contains verified factors only; unverified enrollments are in .all.
+            const totpFactors = (factorsData?.all || []).filter(f => f.factor_type === 'totp');
             const verifiedTotp = totpFactors.find(f => f.status === 'verified');
 
             if (verifiedTotp) {
@@ -404,7 +405,7 @@
             // First-time setup: enroll a TOTP factor, then verify it before granting admin access.
             const { data: enrollment, error: enrollError } = await dbClient.auth.mfa.enroll({
                 factorType: 'totp',
-                friendlyName: 'TGShortUrl Admin'
+                friendlyName: 'TGShortUrl Admin ' + Date.now()
             });
             if (enrollError) throw enrollError;
             pendingMfaFactorId = enrollment.id;
