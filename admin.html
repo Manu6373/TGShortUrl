@@ -377,7 +377,8 @@
 
             const { data: factorsData, error: factorsError } = await dbClient.auth.mfa.listFactors();
             if (factorsError) throw factorsError;
-            const verifiedTotp = (factorsData?.totp || []).find(f => f.status === 'verified');
+            const totpFactors = factorsData?.totp || [];
+            const verifiedTotp = totpFactors.find(f => f.status === 'verified');
 
             if (verifiedTotp) {
                 pendingMfaFactorId = verifiedTotp.id;
@@ -387,6 +388,17 @@
                 pendingMfaChallengeId = challenge.id;
                 showMfaStep('Enter the 6-digit code from Google Authenticator to continue.');
                 return;
+            }
+
+            // A previous setup may have created an unverified factor before the QR
+            // was confirmed. Remove only stale, unverified TOTP factors before
+            // starting enrollment again. Never remove a verified factor.
+            const staleFactors = totpFactors.filter(f => f.status !== 'verified');
+            for (const staleFactor of staleFactors) {
+                const { error: removeError } = await dbClient.auth.mfa.unenroll({
+                    factorId: staleFactor.id
+                });
+                if (removeError) throw removeError;
             }
 
             // First-time setup: enroll a TOTP factor, then verify it before granting admin access.
