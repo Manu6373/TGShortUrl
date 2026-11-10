@@ -213,9 +213,13 @@
             <button id="admin-login-button" onclick="adminLogin()" class="w-full bg-indigo-600 font-bold py-3 rounded-lg">Login</button>
             <div id="admin-mfa-step" class="hidden mt-4 text-left">
                 <p id="admin-mfa-instructions" class="text-sm text-slate-300 mb-3">Enter the 6-digit code from your authenticator app.</p>
-                <div id="admin-mfa-qr-wrap" class="hidden text-center mb-3">
-                    <img id="admin-mfa-qr" alt="Authenticator setup QR code" class="mx-auto max-w-full bg-white p-2 rounded">
-                    <p class="text-xs text-slate-400 mt-2">Scan this QR code with Google Authenticator, then enter the code.</p>
+                <div id="admin-mfa-secret-wrap" class="hidden mb-3">
+                    <label for="admin-mfa-secret" class="block text-xs text-slate-400 mb-2">Authenticator setup key</label>
+                    <div class="flex gap-2">
+                        <input id="admin-mfa-secret" type="text" readonly autocomplete="off" class="min-w-0 flex-1 bg-slate-900 border border-slate-700 text-white px-3 py-3 rounded-lg text-sm">
+                        <button type="button" onclick="copyAdminMfaSecret()" class="bg-slate-700 text-white px-3 rounded-lg text-sm">Copy</button>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-2">In Google Authenticator, tap + → Enter a setup key → choose Time-based.</p>
                 </div>
                 <input id="admin-mfa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="6-digit authenticator code" class="w-full bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-lg mb-3">
                 <button id="admin-mfa-verify" onclick="verifyAdminMfa()" class="w-full bg-indigo-600 font-bold py-3 rounded-lg">Verify code</button>
@@ -353,20 +357,49 @@
             if (msg) msg.textContent = message || '';
         }
 
-        function showMfaStep(instructions, qrCode) {
+        function showMfaStep(instructions, secretKey) {
             document.getElementById('admin-mfa-step').classList.remove('hidden');
             document.getElementById('admin-mfa-instructions').textContent = instructions;
-            const qrWrap = document.getElementById('admin-mfa-qr-wrap');
-            const qr = document.getElementById('admin-mfa-qr');
-            if (qrCode) {
-                qr.src = qrCode.startsWith('data:image/') ? qrCode : ('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(qrCode));
-                qrWrap.classList.remove('hidden');
+            const secretWrap = document.getElementById('admin-mfa-secret-wrap');
+            const secretInput = document.getElementById('admin-mfa-secret');
+            if (secretKey) {
+                secretInput.value = secretKey;
+                secretWrap.classList.remove('hidden');
             } else {
-                qr.removeAttribute('src');
-                qrWrap.classList.add('hidden');
+                secretInput.value = '';
+                secretWrap.classList.add('hidden');
             }
             document.getElementById('admin-mfa-code').value = '';
             document.getElementById('admin-mfa-code').focus();
+        }
+
+        async function copyAdminMfaSecret() {
+            const input = document.getElementById('admin-mfa-secret');
+            if (!input.value) return;
+            try {
+                await navigator.clipboard.writeText(input.value);
+                showLoginError('Setup key copied. Keep it private.');
+            } catch (error) {
+                input.select();
+                document.execCommand('copy');
+                showLoginError('Setup key copied. Keep it private.');
+            }
+        }
+        window.copyAdminMfaSecret = copyAdminMfaSecret;
+
+        async function verifyAdminAccount() {
+            const { data: { user }, error: userError } = await dbClient.auth.getUser();
+            if (userError || !user) throw new Error('Please sign in again.');
+            const { data: profile, error: profileError } = await dbClient
+                .from('users').select('is_admin')
+                .or(`auth_id.eq.${user.id},auth_user_id.eq.${user.id}`)
+                .maybeSingle();
+            if (profileError) throw profileError;
+            if (!profile?.is_admin) {
+                await dbClient.auth.signOut();
+                throw new Error('This account is not an administrator.');
+            }
+            return user;
         }
 
         async function beginAdminMfa() {
@@ -410,7 +443,7 @@
             if (enrollError) throw enrollError;
             pendingMfaFactorId = enrollment.id;
             mfaEnrollmentRequired = true;
-            showMfaStep('First-time setup: scan this QR code in Google Authenticator, then enter the 6-digit code.', enrollment.totp.qr_code);
+            showMfaStep('First-time setup: copy this key into Google Authenticator using Enter a setup key. Choose Time-based, then enter the 6-digit code.', enrollment.totp.secret);
         }
 
         async function verifyAdminMfa() {
@@ -473,6 +506,7 @@
                 const { data: { session }, error: sessionError } = await dbClient.auth.getSession();
                 if (sessionError) throw sessionError;
                 if (!session) return false;
+                await verifyAdminAccount();
                 await beginAdminMfa();
                 return true;
             } catch (error) {
@@ -493,6 +527,8 @@
             try {
                 const { error } = await dbClient.auth.signInWithPassword({ email, password: pass });
                 if (error) throw error;
+                // Check admin permission immediately after valid credentials, before showing MFA.
+                await verifyAdminAccount();
                 await beginAdminMfa();
             } catch (error) {
                 showLoginError(error.message || 'Login failed.');
