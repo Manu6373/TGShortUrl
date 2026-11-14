@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>TGShortUrl · Ad Test Preview</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>body{margin:0;background:#0b0d14;color:#eef0f5;font-family:Arial,sans-serif}.panel{background:#11141c;border:1px solid rgba(238,240,245,.1);border-radius:14px}.muted{color:#a3a9b8}</style>
+</head>
+<body class="p-4">
+<main class="max-w-xl mx-auto space-y-4">
+ <header class="flex items-center justify-between"><div><div class="text-xs tracking-widest muted">TGSHORTURL · SANDBOX</div><h1 class="text-xl font-bold">Advertisement Preview</h1></div><span class="text-xs text-amber-300 border border-amber-500/30 rounded-full px-3 py-1">TEST ONLY</span></header>
+ <section class="panel p-4"><div class="text-xs muted mb-1" id="provider">AD PROVIDER</div><h2 class="font-semibold text-lg" id="placement">Short-link test placement</h2><p class="text-sm muted mt-1">This preview is isolated from the live short-link flow.</p></section>
+ <section id="ad-slot" class="panel p-4 min-h-52 flex items-center justify-center text-center"><div class="muted text-sm">No test advertisement configured. Open Admin Panel → Ad Testing to add one.</div></section>
+ <p class="text-xs muted">Ad scripts are supplied by you and run only on this preview page. Some networks restrict test domains, require approved placement IDs, or may not render in an iframe. Use the provider's official test mode where available.</p>
+</main>
+<script>
+(function(){
+ const KEY='tgshorturl_ad_test_config_v1'; let cfg=null;
+ try{cfg=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
+ const slot=document.getElementById('ad-slot');
+ if(!cfg){return;}
+ document.getElementById('provider').textContent=(cfg.provider||'AD PROVIDER').toUpperCase()+' · '+String(cfg.format||'').toUpperCase();
+ document.getElementById('placement').textContent=cfg.placement||'Short-link test placement';
+ if(cfg.format==='image'){
+   const img=document.createElement('img');img.src=cfg.image;img.alt='Advertisement preview';img.style.cssText='max-width:100%;height:auto;display:block;margin:auto;border-radius:8px';
+   if(cfg.target){const a=document.createElement('a');a.href=cfg.target;a.target='_blank';a.rel='noopener noreferrer sponsored';a.appendChild(img);slot.replaceChildren(a)}else slot.replaceChildren(img);
+ }else{
+   // Provider HTML/SDK code is intentionally executed only in this dedicated preview document.
+   slot.className='panel p-3 min-h-52';
+   const frame=document.createElement('iframe');frame.title='Third-party advertisement sandbox';frame.sandbox='allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox';frame.referrerPolicy='strict-origin-when-cross-origin';frame.style.cssText='width:100%;min-height:300px;border:0;background:#fff;border-radius:8px';
+   slot.replaceChildren(frame);
+   const doc='<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:8px;font-family:Arial,sans-serif">'+String(cfg.code||'')+'</body></html>';
+   frame.srcdoc=doc;
+ }
+})();
+</script>
+</body></html>
