@@ -237,6 +237,7 @@
                 <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('withdrawals', this)">Withdrawals</button>
                 <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('settings', this)">Settings</button>
                 <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('providers', this)">Ad Providers</button>
+                <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('adtest', this)">Ad Testing</button>
                 <button class="nav-btn w-full text-left p-3 rounded text-slate-400 hover:bg-slate-800" onclick="switchTab('broadcast', this)">Broadcast</button>
             </nav>
             <button onclick="adminLogout()" class="w-full p-3 text-left text-red-400 hover:bg-slate-800 rounded">Logout</button>
@@ -299,6 +300,28 @@
             </div>
             <button onclick="saveSettings()" class="col-span-2 bg-indigo-600 font-bold py-3 rounded-lg text-white">Save Configuration</button>
         </div>
+    </template>
+
+    <template id="tpl-adtest">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <div><h2 class="text-2xl font-bold">Ad Testing</h2><p class="text-sm text-slate-400 mt-1">Independent preview only. These settings do not affect live short links or existing ad providers.</p></div>
+            <span class="text-xs px-3 py-2 rounded-lg border border-amber-500/30 text-amber-300">TEST MODE · LOCAL ONLY</span>
+        </div>
+        <div class="glass-panel p-5 space-y-4">
+            <div class="grid md:grid-cols-2 gap-4">
+                <label class="text-xs text-slate-400">Provider name<input id="test-ad-provider" class="mt-1 w-full bg-slate-900 border border-slate-700 p-2 rounded text-white" placeholder="e.g. TADS"></label>
+                <label class="text-xs text-slate-400">Ad format<select id="test-ad-format" class="mt-1 w-full bg-slate-900 border border-slate-700 p-2 rounded text-white"><option value="tgb">TADS TGB / HTML embed</option><option value="banner">Banner HTML / SDK</option><option value="image">Image banner + target URL</option></select></label>
+            </div>
+            <label class="block text-xs text-slate-400">Placement label<input id="test-ad-placement" class="mt-1 w-full bg-slate-900 border border-slate-700 p-2 rounded text-white" value="Short-link test placement" placeholder="e.g. Landing page"></label>
+            <div id="test-ad-code-wrap"><label class="block text-xs text-slate-400">Ad HTML / SDK embed code<textarea id="test-ad-code" rows="6" class="mt-1 w-full bg-slate-900 border border-slate-700 p-3 rounded text-white" placeholder="Paste the ad provider's official embed code"></textarea></label><p class="text-xs text-amber-300 mt-2">Only paste code from an ad provider you trust. Preview runs in a separate test page. Never paste unknown scripts.</p></div>
+            <div id="test-ad-image-wrap" class="hidden grid md:grid-cols-2 gap-4">
+                <label class="text-xs text-slate-400">Image URL<input id="test-ad-image" type="url" class="mt-1 w-full bg-slate-900 border border-slate-700 p-2 rounded text-white" placeholder="https://example.com/banner.jpg"></label>
+                <label class="text-xs text-slate-400">Click-through URL<input id="test-ad-target" type="url" class="mt-1 w-full bg-slate-900 border border-slate-700 p-2 rounded text-white" placeholder="https://example.com"></label>
+            </div>
+            <div class="flex flex-wrap gap-3"><button onclick="saveAdTestConfig()" class="bg-indigo-600 font-bold px-5 py-3 rounded-lg text-white">Save Test Setup</button><button onclick="openAdTestPreview()" class="bg-slate-700 font-bold px-5 py-3 rounded-lg text-white">Open Preview</button><button onclick="clearAdTestConfig()" class="border border-rose-500/40 text-rose-300 px-5 py-3 rounded-lg">Clear Test Setup</button></div>
+            <p id="ad-test-status" class="text-sm text-slate-400" role="status">No test configuration loaded.</p>
+        </div>
+        <div class="mt-6"><div class="flex items-center justify-between gap-3 mb-3"><h3 class="font-bold">Live preview frame</h3><button onclick="refreshAdTestFrame()" class="text-sm text-indigo-300">Refresh preview</button></div><iframe id="ad-test-frame" title="Isolated advertisement test preview" src="ad-test.html" class="w-full rounded-xl border border-slate-700 bg-slate-950" style="height:520px"></iframe></div>
     </template>
 
     <template id="tpl-providers">
@@ -555,6 +578,7 @@
             if(tab === 'withdrawals') loadWithdrawals();
             if(tab === 'settings') loadSettings();
             if(tab === 'providers') loadAdProviders();
+            if(tab === 'adtest') loadAdTestConfig();
             if(tab === 'broadcast') resetBroadcastView();
         }
 
@@ -794,6 +818,37 @@
             const res = await fetchApi('saveSettings', { data: { ad_providers: adProviders } });
             if (res.error) alert(res.error); else alert('Ad providers saved successfully.');
         };
+
+        // Isolated ad-preview configuration: saved only in this browser, never to Supabase/live settings.
+        const AD_TEST_STORAGE_KEY = 'tgshorturl_ad_test_config_v1';
+        function readAdTestConfig() { try { return JSON.parse(localStorage.getItem(AD_TEST_STORAGE_KEY) || 'null'); } catch (_) { return null; } }
+        function loadAdTestConfig() {
+            const cfg = readAdTestConfig() || {};
+            const put = (id, value) => { const el=document.getElementById(id); if(el) el.value=value||''; };
+            put('test-ad-provider',cfg.provider); put('test-ad-format',cfg.format||'tgb'); put('test-ad-placement',cfg.placement||'Short-link test placement');
+            put('test-ad-code',cfg.code); put('test-ad-image',cfg.image); put('test-ad-target',cfg.target);
+            toggleAdTestFields();
+            const status=document.getElementById('ad-test-status'); if(status) status.textContent=cfg ? 'Saved test setup loaded from this browser only.' : 'No test configuration loaded.';
+            refreshAdTestFrame();
+        }
+        function toggleAdTestFields() {
+            const format=document.getElementById('test-ad-format')?.value;
+            document.getElementById('test-ad-code-wrap')?.classList.toggle('hidden',format==='image');
+            document.getElementById('test-ad-image-wrap')?.classList.toggle('hidden',format!=='image');
+        }
+        window.saveAdTestConfig = function() {
+            const cfg={provider:document.getElementById('test-ad-provider').value.trim(),format:document.getElementById('test-ad-format').value,placement:document.getElementById('test-ad-placement').value.trim(),code:document.getElementById('test-ad-code').value,image:document.getElementById('test-ad-image').value.trim(),target:document.getElementById('test-ad-target').value.trim()};
+            if(!cfg.provider) return alert('Enter the ad provider name.');
+            if(cfg.format==='image') { if(!/^https:\/\//i.test(cfg.image)) return alert('Enter a valid HTTPS image URL.'); if(cfg.target && !/^https:\/\//i.test(cfg.target)) return alert('Click-through URL must use HTTPS.'); }
+            else if(!cfg.code.trim()) return alert('Paste the provider embed code first.');
+            try { localStorage.setItem(AD_TEST_STORAGE_KEY,JSON.stringify(cfg)); } catch(e) { return alert('Could not save test setup in this browser.'); }
+            const status=document.getElementById('ad-test-status'); if(status) status.textContent='Test setup saved locally. Live short links and production ad settings were not changed.';
+            refreshAdTestFrame();
+        };
+        window.openAdTestPreview = function() { window.open('ad-test.html','_blank','noopener'); };
+        window.refreshAdTestFrame = function() { const frame=document.getElementById('ad-test-frame'); if(frame) frame.src='ad-test.html?preview='+Date.now(); };
+        window.clearAdTestConfig = function() { localStorage.removeItem(AD_TEST_STORAGE_KEY); ['test-ad-provider','test-ad-code','test-ad-image','test-ad-target'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); const status=document.getElementById('ad-test-status');if(status)status.textContent='Local test setup cleared. Live settings were not changed.';refreshAdTestFrame(); };
+        document.addEventListener('change',e=>{if(e.target?.id==='test-ad-format')toggleAdTestFields();});
     </script>
 </body>
 </html>
