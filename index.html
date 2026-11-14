@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://w.tads.me/widget.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
@@ -381,6 +382,7 @@
             <div id="ad-waiting-indicator" class="hidden w-full text-center py-2 mb-3" aria-live="polite"><span class="ad-loading-ring" aria-hidden="true"></span><div class="text-sm text-slate-300">Waiting for ad...</div></div>
             <div id="ad-banner-container" class="w-full flex justify-center items-center mb-4" style="min-height:0"></div>
             <button id="btn-get-link" class="hidden w-full success-gradient text-white font-bold py-4 rounded-xl text-lg shadow-lg shadow-emerald-500/30"><i class="fa-solid fa-arrow-up-right-from-square mr-2"></i> GET LINK</button>
+            <div id="tads-container-13295" class="w-full mt-4"></div>
         </div>
     </div>
 
@@ -388,7 +390,7 @@
         const SUPABASE_URL = 'https://nfjgjusfvuatjytfpfhf.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_aPROutC-ZbCxrxsJat8oFQ_2vI-eoaU';
         const VERCEL_API_URL = '/api'; 
-        const BOT_USERNAME = 'TGShortUrlBot'; 
+        const BOT_USERNAME = 'tgshortlinksbot'; 
         const APP_SHORT_NAME = 'view'; 
 
         let dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -614,6 +616,39 @@
             setupDashboard();
         }
 
+        // TADS TGB test integration (staging branch only).
+        // Debug mode is enabled so this test does not request real ads or record live ad activity.
+        let tadsTgbStarted = false;
+        async function loadTadsTestTGB() {
+            if (tadsTgbStarted) return;
+            tadsTgbStarted = true;
+
+            const noAds = () => console.info('TADS TGB: no test ad available.');
+            try {
+                const startedAt = Date.now();
+                while (!(window.tads && typeof window.tads.init === 'function')) {
+                    if (Date.now() - startedAt > 8000) {
+                        throw new Error('TADS SDK did not load within 8 seconds.');
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
+                const controller = window.tads.init({
+                    widgetId: 13295,
+                    type: 'static',
+                    debug: true,
+                    onAdsNotFound: noAds
+                });
+
+                await controller.loadAd();
+                await controller.showAd();
+                console.info('TADS TGB test widget initialized.');
+            } catch (error) {
+                console.warn('TADS TGB test integration:', error);
+                noAds();
+            }
+        }
+
         async function initApp() {
             try {
                 await loadAdminSettings();
@@ -638,6 +673,7 @@
                     document.getElementById('ui-loading').classList.add('hidden');
                     document.getElementById('ui-ad-viewer').classList.remove('hidden');
                     setupAdStep();
+                    loadTadsTestTGB();
                     return;
                 }
 
@@ -1318,4 +1354,4 @@
         window.onload = initApp;
     </script>
 </body>
-                                             </html>
+</html>
