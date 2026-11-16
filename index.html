@@ -623,7 +623,7 @@
             if (tadsTgbStarted) return;
             tadsTgbStarted = true;
 
-            const noAds = () => console.info('TADS TGB: no test ad available.');
+            const noAds = () => alert('TADS: No ad available for this user.');
             try {
                 const startedAt = Date.now();
                 while (!(window.tads && typeof window.tads.init === 'function')) {
