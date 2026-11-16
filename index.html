@@ -7,8 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://w.tads.me/widget.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script async src="https://w.tads.me/widget.js"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
@@ -367,22 +367,42 @@
         </div>
     </div>
 
-    <!-- ADVANCED AD VIEWING UI (MONETAG ONLY) -->
+    <!-- SHORT LINK FLOW: intro screens + existing rewarded-ad stage -->
     <div id="ui-ad-viewer" class="hidden fixed inset-0 w-screen h-[100dvh] min-h-screen overflow-y-auto bg-[#0f172a] flex flex-col items-center justify-center p-6 z-[100]">
         <div class="glass-panel w-full max-w-sm p-8 text-center shadow-2xl relative flex flex-col my-auto">
-            <h2 class="text-2xl font-bold mb-4 text-white" id="ad-step-title">Please Wait...</h2>
-            <div id="link-info-container" class="mb-6 text-sm text-slate-300">
-                <i class="fa-solid fa-link text-indigo-400 mr-2"></i><span id="ad-link-desc">Unlocking Secure Link...</span>
+            <section id="short-start-stage">
+                <div class="w-20 h-20 mx-auto mb-5 rounded-full bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center">
+                    <i class="fa-solid fa-play text-3xl text-indigo-400"></i>
+                </div>
+                <h2 class="text-2xl font-bold mb-3 text-white">Continue to your link</h2>
+                <p class="text-sm text-slate-300 leading-6 mb-6">Complete the next steps to securely access your destination link.</p>
+                <button id="btn-short-start" type="button" class="w-full primary-gradient text-white font-bold py-4 rounded-xl shadow-lg">Click here to start</button>
+                <div id="tads-intro-banner" class="w-full flex justify-center items-center mt-5" style="min-height:90px">
+                    <span id="tads-banner-status" class="text-xs text-slate-500">Loading advertisement...</span>
+                </div>
+            </section>
+            <section id="short-continue-stage" class="hidden">
+                <div class="w-16 h-16 mx-auto mb-5 rounded-full bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center">
+                    <i class="fa-solid fa-arrow-right text-2xl text-indigo-400"></i>
+                </div>
+                <h2 class="text-2xl font-bold mb-3 text-white">You're almost there</h2>
+                <p class="text-sm text-slate-300 leading-6 mb-6">Tap below to continue to the required advertisement steps.</p>
+                <button id="btn-short-continue" type="button" class="w-full primary-gradient text-white font-bold py-4 rounded-xl shadow-lg">Click here to continue</button>
+            </section>
+            <div id="reward-stage" class="hidden">
+                <h2 class="text-2xl font-bold mb-4 text-white" id="ad-step-title">Please Wait...</h2>
+                <div id="link-info-container" class="mb-6 text-sm text-slate-300">
+                    <i class="fa-solid fa-link text-indigo-400 mr-2"></i><span id="ad-link-desc">Unlocking Secure Link...</span>
+                </div>
+                <div id="self-click-warning" class="hidden rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-300 p-4 mb-5 text-sm font-semibold" role="alert">Self-click detected! Reward will not be counted.</div>
+                <div id="ad-timer-container" class="w-24 h-24 mx-auto rounded-full bg-slate-900 border-4 border-slate-700 flex items-center justify-center mb-6 relative shadow-inner">
+                    <span id="ad-timer-text" class="text-3xl font-bold text-white">5</span>
+                </div>
+                <button id="btn-watch-ad" disabled class="w-full bg-slate-800 text-slate-500 font-bold py-4 rounded-xl transition-all flex justify-center items-center shadow-lg mb-3"><span>Wait for Timer...</span></button>
+                <div id="ad-waiting-indicator" class="hidden w-full text-center py-2 mb-3" aria-live="polite"><span class="ad-loading-ring" aria-hidden="true"></span><div class="text-sm text-slate-300">Waiting for ad...</div></div>
+                <div id="ad-banner-container" class="w-full flex justify-center items-center mb-4" style="min-height:0"></div>
+                <button id="btn-get-link" class="hidden w-full success-gradient text-white font-bold py-4 rounded-xl text-lg shadow-lg shadow-emerald-500/30"><i class="fa-solid fa-arrow-up-right-from-square mr-2"></i> GET LINK</button>
             </div>
-            <div id="self-click-warning" class="hidden rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-300 p-4 mb-5 text-sm font-semibold" role="alert">Self-click detected! Reward will not be counted.</div>
-            <div id="ad-timer-container" class="w-24 h-24 mx-auto rounded-full bg-slate-900 border-4 border-slate-700 flex items-center justify-center mb-6 relative shadow-inner">
-                <span id="ad-timer-text" class="text-3xl font-bold text-white">5</span>
-            </div>
-            <button id="btn-watch-ad" disabled class="w-full bg-slate-800 text-slate-500 font-bold py-4 rounded-xl transition-all flex justify-center items-center shadow-lg mb-3"><span>Wait for Timer...</span></button>
-            <div id="ad-waiting-indicator" class="hidden w-full text-center py-2 mb-3" aria-live="polite"><span class="ad-loading-ring" aria-hidden="true"></span><div class="text-sm text-slate-300">Waiting for ad...</div></div>
-            <div id="ad-banner-container" class="w-full flex justify-center items-center mb-4" style="min-height:0"></div>
-            <button id="btn-get-link" class="hidden w-full success-gradient text-white font-bold py-4 rounded-xl text-lg shadow-lg shadow-emerald-500/30"><i class="fa-solid fa-arrow-up-right-from-square mr-2"></i> GET LINK</button>
-            <div id="tads-container-13295" class="w-full mt-4"></div>
         </div>
     </div>
 
@@ -390,7 +410,7 @@
         const SUPABASE_URL = 'https://nfjgjusfvuatjytfpfhf.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_aPROutC-ZbCxrxsJat8oFQ_2vI-eoaU';
         const VERCEL_API_URL = '/api'; 
-        const BOT_USERNAME = 'tgshortlinksbot'; 
+        const BOT_USERNAME = 'TGShortUrlBot'; 
         const APP_SHORT_NAME = 'view'; 
 
         let dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -616,39 +636,6 @@
             setupDashboard();
         }
 
-        // TADS TGB test integration (staging branch only).
-        // Debug mode is enabled so this test does not request real ads or record live ad activity.
-        let tadsTgbStarted = false;
-        async function loadTadsTestTGB() {
-            if (tadsTgbStarted) return;
-            tadsTgbStarted = true;
-
-            const noAds = () => alert('TADS: No ad available for this user.');
-            try {
-                const startedAt = Date.now();
-                while (!(window.tads && typeof window.tads.init === 'function')) {
-                    if (Date.now() - startedAt > 8000) {
-                        throw new Error('TADS SDK did not load within 8 seconds.');
-                    }
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                }
-
-                const controller = window.tads.init({
-                    widgetId: 13295,
-                    type: 'static',
-                    debug: false,
-                    onAdsNotFound: noAds
-                });
-
-                await controller.loadAd();
-                await controller.showAd();
-                console.info('TADS TGB test widget initialized.');
-            } catch (error) {
-                console.warn('TADS TGB test integration:', error);
-                noAds();
-            }
-        }
-
         async function initApp() {
             try {
                 await loadAdminSettings();
@@ -672,8 +659,7 @@
                     document.getElementById('app-bottom-nav').classList.add('hidden');
                     document.getElementById('ui-loading').classList.add('hidden');
                     document.getElementById('ui-ad-viewer').classList.remove('hidden');
-                    setupAdStep();
-                    loadTadsTestTGB();
+                    setupShortLinkFlow();
                     return;
                 }
 
@@ -1237,6 +1223,52 @@
         }
 
         // AD REWARD FLOW (Monetag Only)
+        let tadsIntroAttempted = false;
+        async function loadTadsIntroBanner() {
+            if (tadsIntroAttempted) return;
+            tadsIntroAttempted = true;
+            const status = document.getElementById('tads-banner-status');
+            const host = document.getElementById('tads-intro-banner');
+            if (!status || !host) return;
+            try {
+                const started = Date.now();
+                while (!(window.tads && typeof window.tads.init === 'function')) {
+                    if (Date.now() - started > 8000) throw new Error('TADS SDK unavailable');
+                    await new Promise(resolve => setTimeout(resolve, 150));
+                }
+                const controller = window.tads.init({
+                    widgetId: 13295,
+                    type: 'static',
+                    debug: false,
+                    onAdsNotFound: () => {
+                        status.textContent = 'Advertisement currently unavailable';
+                    }
+                });
+                await controller.loadAd();
+                await controller.showAd();
+                if (status.isConnected) status.remove();
+            } catch (error) {
+                console.info('Optional TADS banner unavailable:', error);
+                if (status.isConnected) status.textContent = 'Advertisement currently unavailable';
+            }
+        }
+
+        function setupShortLinkFlow() {
+            document.getElementById('short-start-stage').classList.remove('hidden');
+            document.getElementById('short-continue-stage').classList.add('hidden');
+            document.getElementById('reward-stage').classList.add('hidden');
+            document.getElementById('btn-short-start').onclick = () => {
+                document.getElementById('short-start-stage').classList.add('hidden');
+                document.getElementById('short-continue-stage').classList.remove('hidden');
+            };
+            document.getElementById('btn-short-continue').onclick = () => {
+                document.getElementById('short-continue-stage').classList.add('hidden');
+                document.getElementById('reward-stage').classList.remove('hidden');
+                setupAdStep();
+            };
+            loadTadsIntroBanner();
+        }
+
         async function setupAdStep() {
             const timerEl = document.getElementById('ad-timer-text');
             const btn = document.getElementById('btn-watch-ad');
