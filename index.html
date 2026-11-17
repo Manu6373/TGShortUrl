@@ -131,8 +131,18 @@
         }
         #app-bottom-nav .nav-icon { width: 32px; height: 28px; margin-bottom: 2px; border-radius: 8px; font-size: 15px; }
         #app-bottom-nav span { font-size: 11px; letter-spacing: 0; }
-        #ui-ad-viewer { background: var(--page); }
-        #ui-ad-viewer .glass-panel { max-width: 400px; }
+        /* Short-link landing flow uses the full viewport, not a bordered card. */
+        #ui-ad-viewer { background: var(--page); padding: 0 !important; }
+        #ui-ad-viewer > .short-flow-shell {
+            width: 100%; max-width: none !important; min-height: 100vh; min-height: 100dvh;
+            margin: 0; border: 0 !important; border-radius: 0 !important;
+            background: transparent !important; box-shadow: none !important;
+            display: flex; flex-direction: column; justify-content: center;
+            padding: max(28px, env(safe-area-inset-top)) 24px max(28px, env(safe-area-inset-bottom));
+        }
+        #ui-ad-viewer #short-start-stage,
+        #ui-ad-viewer #short-continue-stage,
+        #ui-ad-viewer #reward-stage { width: 100%; max-width: 440px; margin-left: auto; margin-right: auto; }
         #ad-timer-container { box-shadow: none; }
         @media (min-width: 720px) {
             #page-home .grid.grid-cols-2 { gap: 12px; }
@@ -368,8 +378,8 @@
     </div>
 
     <!-- SHORT LINK FLOW: intro screens + existing rewarded-ad stage -->
-    <div id="ui-ad-viewer" class="hidden fixed inset-0 w-screen h-[100dvh] min-h-screen overflow-y-auto bg-[#0f172a] flex flex-col items-center justify-center p-6 z-[100]">
-        <div class="glass-panel w-full max-w-sm p-8 text-center shadow-2xl relative flex flex-col my-auto">
+    <div id="ui-ad-viewer" class="hidden fixed inset-0 w-screen h-[100dvh] min-h-screen overflow-y-auto bg-[#0f172a] flex flex-col items-center justify-center z-[100]">
+        <div class="short-flow-shell text-center relative">
             <section id="short-start-stage">
                 <div class="w-20 h-20 mx-auto mb-5 rounded-full bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center">
                     <i class="fa-solid fa-play text-3xl text-indigo-400"></i>
@@ -410,7 +420,7 @@
         const SUPABASE_URL = 'https://nfjgjusfvuatjytfpfhf.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_aPROutC-ZbCxrxsJat8oFQ_2vI-eoaU';
         const VERCEL_API_URL = '/api'; 
-        const BOT_USERNAME = 'tgshortlinksbot';
+        const BOT_USERNAME = 'TGShortUrlBot'; 
         const APP_SHORT_NAME = 'view'; 
 
         let dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
