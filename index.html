@@ -72,8 +72,6 @@
             border-radius: 0;
             background: var(--page);
         }
-        /* Telegram Mini App: keep the app header below Telegram's native top controls.
-           The regular website layout remains unchanged. */
         html.telegram-mini-app body {
             padding-top: calc(64px + var(--tg-content-safe-area-inset-top, env(safe-area-inset-top, 0px)));
         }
@@ -131,36 +129,40 @@
         }
         #app-bottom-nav .nav-icon { width: 32px; height: 28px; margin-bottom: 2px; border-radius: 8px; font-size: 15px; }
         #app-bottom-nav span { font-size: 11px; letter-spacing: 0; }
-        /* Short-link overlay only: full viewport, no bordered card. Normal app UI is untouched. */
+        
+        /* Full-Screen Short-Link Design (Respects .hidden properly without display:flex override) */
         #ui-ad-viewer {
-            position: fixed !important;
-            inset: 0 !important;
-            width: 100% !important;
-            height: 100vh !important;
-            height: 100dvh !important;
-            min-height: 100vh !important;
-            min-height: 100dvh !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            overflow-y: auto !important;
-            background: #0f172a !important;
-            display: flex !important;
-            align-items: stretch !important;
-            justify-content: stretch !important;
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            min-height: 100vh;
+            min-height: 100dvh;
+            margin: 0;
+            padding: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        #ui-ad-viewer.hidden {
+            display: none !important;
         }
         #ui-ad-viewer > .short-flow-shell {
             box-sizing: border-box;
-            width: 100% !important;
-            max-width: none !important;
-            min-height: 100vh !important;
-            min-height: 100dvh !important;
-            margin: 0 !important;
-            padding: max(28px, env(safe-area-inset-top)) 22px max(28px, env(safe-area-inset-bottom)) !important;
-            border: 0 !important;
-            border-radius: 0 !important;
-            outline: 0 !important;
-            background: transparent !important;
-            box-shadow: none !important;
+            width: 100%;
+            max-width: 460px;
+            margin: 0 auto;
+            padding: 24px 20px;
+            border: 0;
+            border-radius: 0;
+            outline: 0;
+            background: transparent;
+            box-shadow: none;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -293,7 +295,6 @@
                     </div>
                 </div>
 
-
                 <div class="mx-4 mb-6">
                     <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
                         <h3 class="text-sm font-bold text-white uppercase tracking-wider"><i class="fa-solid fa-chart-column text-indigo-400 mr-2"></i>Today</h3>
@@ -326,8 +327,6 @@
                         </div>
                         <div id="report-global-cpm" class="text-2xl font-bold text-indigo-400">$0.00</div>
                     </div>
-                </div>
-            </div>
                 </div>
             </div>
 
@@ -430,8 +429,8 @@
         </div>
     </div>
 
-    <!-- SHORT LINK FLOW: intro screens + existing rewarded-ad stage -->
-    <div id="ui-ad-viewer" class="hidden fixed inset-0 w-screen h-[100dvh] min-h-screen overflow-y-auto bg-[#0f172a] flex flex-col items-center justify-center z-[100]">
+    <!-- SHORT LINK FLOW: Full-screen landing & ad viewer -->
+    <div id="ui-ad-viewer" class="hidden">
         <div class="short-flow-shell text-center relative">
             <section id="short-start-stage">
                 <div class="w-20 h-20 mx-auto mb-5 rounded-full bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center">
@@ -482,9 +481,6 @@
         
         const tg = window.Telegram.WebApp;
 
-        // Apply extra top spacing only inside Telegram Mini Apps.
-        // Telegram's contentSafeAreaInset accounts for its native top controls;
-        // normal browser visits keep the existing header position.
         if (tg.initData) {
             document.documentElement.classList.add('telegram-mini-app');
 
@@ -507,7 +503,6 @@
         tg.expand(); tg.setHeaderColor('#0f172a');
         let isLoginMode = true;
 
-        // Dollar-only formatter (no currency-name labels)
         function formatCurrency(usdAmount, size = 'normal') {
             const usd = Number(usdAmount || 0);
             if (size === 'large') {
@@ -529,8 +524,6 @@
                     </div>`;
         }
 
-        // Load provider scripts in source order. External SDKs must finish loading
-        // before their following inline initialization scripts are executed.
         async function injectHTMLWithScripts(htmlString) {
             if (!htmlString) return;
             const holder = document.createElement('div');
@@ -594,8 +587,6 @@
                 ? provider.function_name
                 : (provider === 'monetag' ? (adminSettings.monetag_reward_func || 'show_12122788') : (adminSettings.adsbitvex_reward_func || 'window.showadsbitvex'));
             const method = await waitForProviderFunction(functionName, providerName);
-            // Provider SDK must resolve its Promise only after the rewarded ad completes.
-            // A client-side Promise is not independent server-side proof of an impression.
             const result = await Promise.race([
                 Promise.resolve().then(() => method.fn.call(method.owner)),
                 new Promise((_, reject) => setTimeout(() => reject(new Error(`${providerName} ad timed out.`)), 45000))
@@ -649,8 +640,6 @@
         async function loadAuthenticatedProfile(session) {
             if (!session?.user?.id) throw new Error('Login session is missing. Please sign in again.');
             const authId = session.user.id;
-            // auth_id is the active profile key in this database. Try the legacy
-            // auth_user_id column only if the primary lookup returns no row.
             let { data: u, error } = await dbClient
                 .from('users').select('*').eq('auth_id', authId).maybeSingle();
             if (error) throw new Error('Could not load your profile: ' + error.message);
@@ -660,9 +649,6 @@
                 if (legacy.error) throw new Error('Could not load your profile: ' + legacy.error.message);
                 u = legacy.data;
             }
-            // Create a profile only after an authenticated session exists.
-            // This handles accounts registered while email confirmation is enabled:
-            // signUp returns no session, so profile creation must wait until login.
             if (!u) {
                 const tgUser = tg.initDataUnsafe?.user || {};
                 const profile = {
@@ -677,7 +663,6 @@
                     .from('users').insert([profile]).select('*').single();
 
                 if (createError) {
-                    // A concurrent login may have created the profile first.
                     if (createError.code === '23505') {
                         const retry = await dbClient.from('users').select('*')
                             .eq('auth_id', authId).maybeSingle();
@@ -709,13 +694,12 @@
                 }
 
                 const startParam = tg.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get('link');
-                // Keep Telegram referral start parameters while the user verifies email
-                // and returns to log in later.
                 if (startParam && /^ref_\d+$/.test(startParam)) {
                     localStorage.setItem('tgshorturl_pending_referral', startParam);
                 }
                 const isLegacyShortLink = typeof startParam === 'string' && startParam.startsWith('link_');
                 const isNewShortLink = typeof startParam === 'string' && /^[A-Za-z0-9]{4,6}$/.test(startParam);
+                
                 if (isLegacyShortLink || isNewShortLink) {
                     window.currentShortId = isLegacyShortLink ? startParam.slice(5) : startParam;
                     document.getElementById('ui-main-app').classList.add('hidden');
@@ -725,6 +709,9 @@
                     setupShortLinkFlow();
                     return;
                 }
+
+                // Normal Mini App opening: Ensure short-link viewer stays hidden and dashboard opens normally
+                document.getElementById('ui-ad-viewer').classList.add('hidden');
 
                 const { data: { session }, error } = await dbClient.auth.getSession();
                 if (error) throw error;
@@ -748,8 +735,6 @@
             }
         }
 
-        // Process a Telegram referral after the user has a verified login session
-        // and a TGShortUrl profile. Existing referral rows are left untouched.
         async function processPendingReferral() {
             const pending = localStorage.getItem('tgshorturl_pending_referral') || '';
             if (!/^ref_\d+$/.test(pending) || !currentUserData?.telegram_id) return;
@@ -779,7 +764,6 @@
                 referred_tg_id: referredId
             }]);
             if (insertError) {
-                // Another login/device may have inserted the same referral concurrently.
                 if (insertError.code === '23505') {
                     localStorage.removeItem('tgshorturl_pending_referral');
                     return;
@@ -787,7 +771,6 @@
                 throw new Error('Could not add referral: ' + insertError.message);
             }
 
-            // Keep the existing backend referral-processing/notification workflow.
             const tgUser = tg.initDataUnsafe?.user || {};
             fetch(`${VERCEL_API_URL}/process_referral`, {
                 method: 'POST',
@@ -798,7 +781,6 @@
             localStorage.removeItem('tgshorturl_pending_referral');
         }
 
-        // AUTH & NAVIGATION
         function toggleAuthMode() {
             isLoginMode = !isLoginMode;
             document.getElementById('auth-title').innerText = isLoginMode ? "Welcome Back" : "Create Account";
@@ -872,8 +854,6 @@
                     }
                 }
 
-                // Do not reload the Telegram WebView after login. Render the profile
-                // directly from the newly-created Supabase session.
                 const { data: sessionData, error: sessionError } = await dbClient.auth.getSession();
                 if (sessionError) throw sessionError;
                 await loadAuthenticatedProfile(sessionData.session || authData.session);
@@ -965,7 +945,6 @@
             if(pageId === 'page-wallet') loadWithdrawalHistory();
         }
 
-        // DATA LOADING
         function setupDashboard() {
             const u = currentUserData;
             document.getElementById('user-greeting').innerText = `Hello, ${u.first_name}!`;
@@ -977,8 +956,6 @@
             
             loadDashboardReports();
 
-            // Admin Panel stores the minimum in USD under settings.min_withdraw.
-            // Convert to INR only when calling the withdrawal RPC.
             const minWithdrawUsd = Number(adminSettings.min_withdraw ?? 5);
             const refPercent = Number(adminSettings.refer_percent ?? 1);
             document.getElementById('min-withdraw-display').innerText = `$${minWithdrawUsd.toFixed(2)}`; 
@@ -1004,8 +981,6 @@
                 const button = this;
                 button.disabled = true;
                 try {
-                    // Create a unique 6-character Base62 ID. Check the database before insert
-                    // and retry on collisions; legacy link IDs remain valid.
                     const alphabet = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
                     let shortId = '';
                     let created = false;
@@ -1067,7 +1042,6 @@
                     alert('Copy failed. Please select and copy the link manually.');
                 }
             };
-
         }
 
         function localDateKey(date) {
@@ -1104,15 +1078,10 @@
             if (referralResult.error) throw referralResult.error;
 
             const logs = logsResult.data || [];
-            // Only link_earning contributes to link earnings and Average CPM.
-            // Referral commissions are displayed separately and never affect CPM.
             const earnings = logs
                 .filter(row => row.source === 'link_earning')
                 .reduce((sum, row) => sum + Number(row.amount || 0), 0);
             const referralEarnings = (referralResult.data || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
-            // Count only successfully rewarded link views. Each successful reward
-            // creates one link_earning ledger row; click_logs also includes attempts
-            // that may not have earned, so it is not a valid Average CPM denominator.
             const linkEarningRows = logs.filter(row => row.source === 'link_earning');
             const views = linkEarningRows.length;
             return { earnings, referralEarnings, views, cpm: views > 0 ? (earnings / views) * 1000 : 0 };
@@ -1135,7 +1104,6 @@
             if (monthPicker && !monthPicker.value) monthPicker.value = monthKey;
             if (monthPicker) monthPicker.max = monthKey;
 
-            // Global CPM always reflects the current CPM configured in Admin Panel.
             const globalCpm = Number(adminSettings.cpm || 0);
             const globalCpmEl = document.getElementById('report-global-cpm');
             if (globalCpmEl) globalCpmEl.innerText = `$${globalCpm.toFixed(2)}`;
@@ -1179,12 +1147,9 @@
             
             if(!method || !details || !tgLink) return alert("All fields including Telegram Link are required.");
             
-            // request_withdrawal RPC expects the minimum in INR.
-            // Admin Panel stores it in USD, so convert using the app's ₹85/USD rate.
             const minInr = Number(adminSettings.min_withdraw ?? 5) * 85;
             
             try {
-                // Secure Transactional Request via RPC
                 const { data, error } = await dbClient.rpc('request_withdrawal', {
                     p_user_id: currentUserData.id,
                     p_method: method,
@@ -1285,7 +1250,6 @@
             };
         }
 
-        // AD REWARD FLOW (Monetag Only)
         let tadsIntroAttempted = false;
         async function loadTadsIntroBanner() {
             if (tadsIntroAttempted) return;
@@ -1336,8 +1300,6 @@
             const timerEl = document.getElementById('ad-timer-text');
             const btn = document.getElementById('btn-watch-ad');
             btn.disabled = true;
-            // Do not interrupt the rewarded-ad sequence with a self-click pre-check.
-            // Self-click awareness is shown only after all configured ads finish.
 
             let timeLeft = Math.max(0, Math.min(300, Number(adminSettings.ad_timer) || 5));
             btn.disabled = true; btn.innerHTML = `Wait ${timeLeft}s...`;
@@ -1386,7 +1348,6 @@
                 btn.dataset.busy = '0';
                 btn.disabled = false;
                 btn.innerHTML = 'Try Again';
-                const remaining = minimumAds - completedProviders.length;
                 alert('No ads available. Something went wrong. Please try again later!');
                 return;
             }
@@ -1416,7 +1377,6 @@
                 const warning = document.getElementById('self-click-warning');
                 const isSelfClick = /self-clicks are not eligible|self.click detected/i.test(e.message || '');
                 if (isSelfClick) {
-                    // Awareness only: the ads have already completed; the server rejects reward.
                     warning.textContent = 'Self-click detected! Reward will not be counted.';
                     warning.classList.remove('hidden');
                     document.getElementById('ad-step-title').innerText = 'Self-click detected';
@@ -1433,8 +1393,6 @@
             const getLinkBtn = document.getElementById('btn-get-link');
             getLinkBtn.classList.remove('hidden');
 
-            // Use the URL returned by the reward API. Browser-side RLS prevents
-            // users from reading another user's original_url directly.
             const originalUrl = rewardResult?.original_url;
             if (originalUrl) {
                 getLinkBtn.onclick = () => {
@@ -1449,4 +1407,4 @@
         window.onload = initApp;
     </script>
 </body>
-                                             </html>
+</html>
